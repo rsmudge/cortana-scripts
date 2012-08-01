@@ -23,7 +23,12 @@ IRC
 ---
 If you'd like to chat in real-time, please join #armitage on irc.freenode.net. The folks in the channel aren't active all the time. You may need to ask your question and wait for a response.
 
+Bug Reports / Feature Requests
+-----------
+If you find a bug in a script, contact its author. If you find a bug in Cortana or have a feature request, file it in the [Armitage Issue Tracker]
+
   [Downloads]: https://github.com/rsmudge/cortana-scripts/downloads 
   [Armitage]: http://www.fastandeasyhacking.com
   [Cobalt Strike]: http://www.advancedpentest.com
   [Cortana Tutorial]: http://www.fastandeasyhacking.com/download/cortana/cortana_tutorial.pdf
+  [Armitage Issue Tracker]: http://code.google.com/p/armitage/issues/list
