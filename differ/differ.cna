@@ -1,0 +1,14 @@
+# Announce when a new service is added
+
+on service_add {
+	local('$proto');
+	$proto = service_data($1, $2);
+	if ($proto !is $null) {
+		$proto = $proto['proto'];
+	}
+	else {
+		$proto = $null;
+	}
+
+	say("I see $1 $+ : $+ $2 (" . service_info($1, $2) . ") $proto");
+}

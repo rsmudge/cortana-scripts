@@ -1,0 +1,4 @@
+Place a sniff.png file in this folder to have it placed on top of a host image
+when the sniffer is enabled.
+
+I will provide a placeholder image as soon as my artist gets it to me.

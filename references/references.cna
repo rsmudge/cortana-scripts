@@ -1,0 +1,20 @@
+# Add a few references to the help menu.
+
+sub url {
+	return @($1, lambda({ url_open($url) }, $url => $2));
+}
+
+popup help {
+	menu "References" {
+		@items = @(
+			url("Reverse Shell", "http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet"),
+			url("SSH Cheat Sheet", "http://pentestmonkey.net/cheat-sheet/ssh-cheat-sheet"),
+			url("Windows Command Line Tools", "http://www.sans.org/security-resources/sec560/windows_command_line_sheet_v1.pdf"),
+			url("Netcat Cheat Sheet", "http://www.sans.org/security-resources/sec560/netcat_cheat_sheet_v1.pdf")
+		);
+
+		foreach $item (@items) {
+			item($item[0], $item[1]);
+		}
+	}
+}

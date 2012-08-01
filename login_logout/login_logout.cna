@@ -1,0 +1,41 @@
+# Keep track of users logging in and logging out on a shell session...
+
+global('%users');
+
+on shell_who {
+	local('$users $host @new $new @old $old');
+
+	# who is logged in?
+	if (charAt(["$3" trim], 0) eq "#") {
+		$users = @();
+	}
+	else {
+		$users = split('\s+', split("\n", [$3 trim])[0]);
+	}
+
+	# which host are we dealing with?
+	$host  = session_host($1);
+
+	if ($host in %users) {
+		# find new users....
+		@new = removeAll(copy($users), %users[$host]);
+		foreach $new (@new) {
+			println("[+] $[20]new logged on to: $host"); 
+		}
+
+		# find missing users
+		@old = removeAll(copy(%users[$host]), $users);
+		foreach $old (@old) {
+			println("[-] $[20]old logged out: $host");
+		}
+	}
+	%users[$host] = $users;
+}
+
+on heartbeat_5s {
+	foreach $sid (session_ids()) {
+		if (-isshell $sid) {
+			s_cmd($sid, "who -q");
+		}
+	}
+}

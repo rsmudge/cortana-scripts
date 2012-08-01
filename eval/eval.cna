@@ -1,0 +1,38 @@
+#
+# Eval bridge... may use $x in 'x' commands to reference last result.
+#
+# Adds console commands:
+#
+# cortana> ? "*test* iswm "testing 123"
+# true
+# cortana> x 2 + 2
+# 4
+# cortana> e for ($x = 0; $x < 100; $x++) { println($x); }
+# 0
+# 1
+# ...
+#
+
+debug(7 | 34);
+
+global('$x');
+
+command ? {
+	local('$expression');
+	$expression = 'iff(' . substr($0, 2) . ')';
+	if (expr($expression)) {
+		println("true");
+	}
+	else {
+		println("false");
+	}
+}
+
+command x {
+	$x = expr(substr($0, 2));
+	println($x);
+}
+
+command e {
+	eval(substr($0, 2));
+}

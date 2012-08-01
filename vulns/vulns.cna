@@ -1,0 +1,27 @@
+# Add a table for viewing vulnerabilities to Armitage
+
+popup view_middle {
+	item "&Vulnerabilities" {
+		local('$table');
+		$table = open_table_tab("Vulnerabilities", "", @("host", "name", "refs"), @(), @("Refresh"), "vuln_hook", 1);
+		refresh_vulns($table);
+	}
+}
+
+sub refresh_vulns {
+	local('$vulns');
+	$vulns = call("db.vulns")['vulns'];
+	table_set($1, $vulns);
+}
+
+on tab_table_click {
+	if ($3 eq "Refresh") {
+		refresh_vulns($1);
+	}
+}
+
+popup vuln_hook {
+	item "Copy References" {
+		clipboard_set(join(", ", flatten(table_selected($1, "refs"))));
+	}
+}

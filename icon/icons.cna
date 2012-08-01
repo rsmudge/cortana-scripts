@@ -1,0 +1,21 @@
+#
+# A filter to show service icons for ports 22, 80, and 445
+#
+
+filter host_image {
+	$address = $2['address'];
+
+	if ($address hasservice 22) {
+		push($1, script_resource("ssh.png")); 
+	}
+
+	if ($address hasservice 80) {
+		push($1, script_resource("www.png")); 
+	}
+
+	if ($address hasservice 445) {
+		push($1, script_resource("smb.png")); 
+	}
+
+	return @_;
+}

