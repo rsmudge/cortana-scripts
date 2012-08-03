@@ -13,6 +13,7 @@ Contribute
 ----------
 If you'd like to contribute, fork this repository, make your modifications, and submit a pull request. Each script should have its own folder with a .cna file, any resources, and optionally a readme.
 
+Optionally, if you're not a git warrior, you may email your script contribution to contact at fastandeasyhacking dot com. 
 
 Mailing List
 ------------
