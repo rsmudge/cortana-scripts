@@ -82,7 +82,7 @@ on start_sniffing {
 }
 
 # periodically dump the sniffer stuff...
-on heartbeat_10s {
+on heartbeat_1m {
 	local('$sid $interfaces $f');
 	foreach $sid => $interfaces (%sniffers) {
 		foreach $interface ($interfaces) {
