@@ -1,0 +1,81 @@
+#
+# Watch user idle times... display an icon indicating how idle
+# each user is. 
+#
+# Icon Color       Meaning
+# ----------       -------
+# no icon          unknown idletime
+# green            user is active
+# blue             user was active in last 5 minutes
+# yellow           user was active in last 30 minutes
+# red              user is inactive
+#
+global('%times');
+
+# every 30s, loop through each session and issue an idletime command
+on heartbeat_30s {
+	local('$sid');
+	foreach $sid (session_ids()) {
+		if (-iswinmeterpreter $sid && -isready $sid) {
+			m_cmd($sid, "idletime");
+		}
+	}
+}
+
+# when the idletime command returns, store the time in our global dictionary
+on meterpreter_idletime {
+	local('$sid $string $days $hours $mins $secs $time');
+	($sid, $null, $string) = @_;
+
+	if ($string ismatch "User has been idle for: (\\d+) secs{0,1}\n") {
+		($secs) = matched();
+	}
+	else if ($string ismatch "User has been idle for: (\\d+) mins{0,1} (\\d+) secs{0,1}\n") {
+		($mins, $secs) = matched();
+	}
+	else if ($string ismatch "User has been idle for: (\\d+) hours{0,1} .*?\n") {
+		($hours) = matched();
+	}
+	else if ($string ismatch "User has been idle for: (\\d+) days{0,1} .*?\n") {
+		($hours) = matched();
+		$hours *= 24;
+	}
+	else {
+		return;
+	}
+
+	%times[$sid] = $secs + ($mins * 60) + ($hours * 60 * 60);
+}
+
+# when an icon is rendered for a host... figure out how idle they are and show a color
+filter host_image {
+	local('$address $sid $time');
+	$address = $2['address'];
+
+	foreach $sid (host_sessions($address)) {
+		if ($sid in %times && $time is $null) {
+			$time = %times[$sid];
+		}
+	}
+
+	if ($time !is $null) {
+		# user has been active in the last minute
+		if ($time < 60) {
+			push($1, script_resource("user_green.png"));
+		}
+		# user has been active in the last 5 minutes
+		else if ($time < 300) {
+			push($1, script_resource("user_blue.png"));
+		}
+		# user has been active in the last 30 minutes
+		else if ($time < 1800) {
+			push($1, script_resource("user_yellow.png"));
+		}
+		# user hasn't been active for awhile
+		else {
+			push($1, script_resource("user_red.png"));
+		}
+	}
+
+	return @_;
+}
