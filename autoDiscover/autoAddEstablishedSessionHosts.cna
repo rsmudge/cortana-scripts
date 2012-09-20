@@ -32,7 +32,7 @@ on exec_netstat {
 				println("[*] Discovered Host Route and Added: $NewNetIP");
 				route_add($NewNetIP, $netMask, $1);
 				cmd($console, "hosts --add $NewNetIP");	
-				sleep(10 * 1000);
+				sleep(5 * 1000);
 				db_sync();
 			}		
 		}

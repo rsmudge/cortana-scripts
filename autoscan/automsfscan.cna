@@ -16,7 +16,7 @@ on host_add {
 	cmd($console, "set BATCHSIZE 256");
 	cmd($console, "set RHOSTS $1");
 	cmd($console, "run -j");
-	sleep(30 * 1000);
+	#sleep(30 * 1000);
 	db_sync(); 
 }
 
