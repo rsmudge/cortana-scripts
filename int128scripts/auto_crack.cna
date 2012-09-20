@@ -1,0 +1,8 @@
+# Will launch jtr whenever credentials are added
+# Has bug where, when cred is cracked, its inserted into creds db, which then launches this module again.  To fix, run jobs
+on credential_add {
+	$console = console();
+	cmd($console, "use auxiliary/analyze/jtr_crack_fast");
+	cmd($console, "run -j -z");
+	say("New credentials found, autocracking nom nom");
+	}
