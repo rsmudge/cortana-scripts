@@ -97,6 +97,20 @@ popup shell {
 				s_cmd($1, "echo '\@reboot /usr/bin/loadkeys dvorak' >> /etc/crontab");
 			}
 			
+			
+                        item "Send Message" {
+                                on shell_which {
+                                        if($3) {
+                                                s_cmd($1, "xterm -e 'echo $message; sleep 9999999'");
+                                        }
+                                        else {
+                                                s_cmd($1, "echo $message | wall -n");
+                                        }
+                                }
+                                s_cmd($1, 'which xterm');
+                                $message = prompt_text("Enter message. (255 max char)");
+                        }
+
                         item "Kill special apps" {
 				# Do it to support multiple versions of cron
 				s_cmd($1, 'echo "* * * * * root /bin/kill \$(/bin/ps aux | /bin/grep \'tcpdump\' | /usr/bin/awk \'{print \$2}\')" >> /etc/crontab');	
