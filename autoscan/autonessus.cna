@@ -1,0 +1,45 @@
+# Cortana script to use nessus.
+# by monstream00
+
+on host_add {
+	println("[*] Loading Nessus");
+	$console = console();
+	$console = open_console_tab("NessusScan_$1"); #Debug use
+	cmd($console, "load nessus");
+	cmd($console, "nessus_connect msf:msf@127.0.0.1:8834");
+	cmd($console, "nessus_save");
+	cmd($console, "nessus_policy_list");
+	println("[*] Done Loading Nessus");
+	println("[*] Nessus Scanning: $1");
+	cmd($console, "nessus_scan_new -1 $1 $1");
+	#cmd($console, "nessus_scan_status");
+	cmd($console, "nessus_report_list");
+	println("[*] Nmap Scanning: $1");
+	cmd($console, "db_nmap -sV -PN -sT -sU $1");
+	#println("[*] Output: $console");
+	#quit();
+}
+
+on console_nessus_report_list {
+	#println("[*] Hello world:");
+	@nReports = parse_table($3, @("ID", "Name", "Status", "Date"));
+	foreach $nReports (@nReports) {
+		#route_add($route['Subnet'], $route['Netmask'], $1);
+		($nname, $nstat, $ndate, $nid) = values($nReports, @('Name', 'Status', 'Date', 'ID'));
+		if ($nstat ismatch "completed") {
+			println("[*] Importing Report: $nid");
+			cmd($console, "nessus_report_get $nid");
+			sleep(10 * 1000);
+			cmd($console, "nessus_report_del $nid");
+			println("[*] Imported Report: $nid");
+			db_sync();
+		}
+		else if ($nstat ismatch "running") {
+			#println("[*] Not done Scanning: $nid");
+			sleep(30 * 1000);
+			cmd($console, "nessus_report_list");
+		}
+		#println("[*] Importing Report: $nid");
+	}
+}
+
