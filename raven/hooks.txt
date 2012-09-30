@@ -1,0 +1,13 @@
+Raven comes in two forms, an exe and a DLL. Raven does not implant itself, that is 
+up to you. Here are some hiding techniques:
+
+1) Copy raven.dll to c:\windows\linkinfo.dll
+
+Windows explorer in older systems loads linkinfo.dll from c:\windows over 
+c:\windows\system32 if it exists there. Fun :)
+
+http://greatis.com/security/explorer_redirection_dll_startup_hole.htm
+
+2) Install raven.exe into the registry or as a service:
+
+http://www.bleepingcomputer.com/tutorials/windows-program-automatic-startup-locations/

