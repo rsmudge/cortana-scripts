@@ -1,0 +1,53 @@
+#
+# A script to create a tab with the armitage events issued.  This is the 
+# postgres events table within metasploit with only the records that contain
+# armitage.event.  The events table being shown is persistent as opposed to
+# event log. 
+#
+# Use:
+# View -> Events
+# 
+global('$table');
+
+# Ideally I would get the names of the columns from the keys after a db read, 
+# but the events table may not return anything when we first render the table.
+# For example:
+# $events = call('db.events')['events'];
+# @col    = keys($events[0]);
+
+popup view_middle {
+	item "&Events" {
+        $table  = open_table_tab("Events","",@("id","username","created_at","info"),@(),@("Refresh"),"event_hook",1);
+        refresh_events($table);
+	}
+}
+
+sub refresh_events {
+	local('@events');
+	$events = call('db.events')['events'];
+    
+    # convert the time to UTC in a human readable format
+	$events = map({
+	    $1['created_at'] = formatDate($1['created_at'],'yyyy-MM-dd HH:mm:ss Z');
+        return $1;
+        },$events);
+		
+	table_set($1,$events);	
+}
+
+on tab_table_click {
+	if ($3 eq "Refresh") {
+		refresh_events($1);
+	}
+}
+
+# allows the user to select rows and copy them to the clipboard
+# the format of the copied data is similar to csv
+popup event_hook {
+	item "Copy Events" {
+		local('$selected $printable');
+		$selected = map( { return join(', ',$1);},table_selected($1,"id","username","created_at", "info"));
+		$printable = join("\n",$selected);
+		clipboard_set($printable);
+	}
+}
