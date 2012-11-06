@@ -1,0 +1,31 @@
+# on called with file
+command import_creds {
+
+   # if we didn't get input
+	if (size(@_) < 2)
+	{
+		println("Usage: import_creds <cloudcrack file> <network>");
+		println("Script assumes file has one cloudcrack record per line.");
+                println("lines should be of the format 'user:id:LM_Hash:NTLM_Hash:LM_Pass::NTLM_Pass'");
+		return;
+	}
+
+   # open file
+	$handle = openf($1);
+
+   # for line in file
+	while $read (readln($handle))
+	{
+		# Parse the line
+		@data = split(":",$read);
+		# @data[0] = user, @data[4] = LM pass, @data[6] = NTLM pass
+		say("Adding " . @data[0] . " with LM password " . @data[4] . " and NTML password " . @data[6] . " to " . $2 . ".");
+		# Add the line to creds
+		credential_add($2, "445", @data[0], @data[4], "password");
+		credential_add($2, "445", @data[0], @data[6], "password");
+	}
+	
+# Close the file
+closef($handle);
+
+}
