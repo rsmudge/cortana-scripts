@@ -1,0 +1,66 @@
+debug(debug() | 512);
+#
+# This script waits for a host_add or host_del event
+# on host_add, it adds the host to the graph & links it if possible
+# on host_del, it sets the end time of the host in the graph to the current time
+
+# set the value of the config file
+setg($config, "graphDB.conf")
+
+#say("Hello.  This is pt_autodoc checking in.  Logging all hosts from now on.");
+#say("Hi from autdoc.");
+elog("Autodoc checking in");
+
+#Executable commands with params
+#Commented out because it wasn't working.  Hard coding instead.
+$graph_initialize = "./initialize_graph_db.py $config";
+#$graph_host_add = "./graph_add_host.py $1"; # Exec for adding hosts
+#@graph_host_del = @("./graph_del_host.py", $1); # Exec for deleting hosts
+#@graph_svc_add = @("./graph_add_svc.py", $1, $2); # Exec for adding services
+#@graph_svc_del = @("./graph_del_svc.py", $1, $2); # Exec for deleteing services
+
+# Clear the graph DB and add basic nodes 
+command initialize_graph_db {
+	$process = exec($graph_initialize);
+	@data = readAll($process);
+	elog(@data[0]);
+	closef($process);
+}
+
+
+# host ip is at $1
+# If host is added, add it (or update it if it's already there)
+on host_add {
+	elog("./graph_add_host.py $1");
+	$process = exec("./graph_add_host.py $1 $config");
+	@data = readAll($process);
+	elog(@data[0]);
+	closef($process);
+}
+
+
+# Host ip is at $1
+# If host is deleted, update it's end time to now
+on host_del {
+	$process = exec("./graph_del_host.py $1 $config");
+	@data = readAll($process);
+	elog(@data[0]);
+	closef($process);
+}
+
+
+# When a service is added, add it to graph (or update it if it exists)
+on service_add {
+	$process = exec("./graph_add_svc.py $1 $2 $config");
+	@data = readAll($process);
+	elog(@data[0]);
+	closef($process);
+}
+
+# When a service is deleted, update it's end time to now
+on service_delete {
+	$process = exec("./graph_add_svc.py $1 $2 $config");
+	@data = readAll($process);
+	elog($data[0]);
+	closef($process);
+}
