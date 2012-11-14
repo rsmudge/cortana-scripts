@@ -5,7 +5,9 @@ debug(debug() | 512);
 # on host_del, it sets the end time of the host in the graph to the current time
 
 # set the value of the config file
-setg($config, "graphDB.conf")
+global('$config');
+$config = "graphDB.conf";
+
 
 #say("Hello.  This is pt_autodoc checking in.  Logging all hosts from now on.");
 #say("Hi from autdoc.");
