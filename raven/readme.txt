@@ -1,7 +1,7 @@
 Raven - Windows Backdoor
 ------------------------
 
-Raven is a Windows Backdoor developed by Raphael Mudge for the CCDC competition.
+Raven is a Windows Backdoor developed by Raphael Mudge for the 2012 CCDC competition.
 
 Raven periodically connects to one of several attacker controlled web servers and it
 attempts to download RAW shell code. If code is available, Raven will inject the
@@ -12,19 +12,25 @@ by a NULL byte. Your list of URLs must not exceed 1024 characters. You may speci
 whatever URLs you like (to include different port numbers as well). Raven will try
 these URLs in a round-robin fashion.
 
-These URLs should point to files that contain RAW shell code spit out by Metasploit.
-The payload doesn't matter. Just be sure to set EXITFUNC to THREAD.
-
 Raven is configured to phone home every five minutes. This is a low and slow backdoor.
 
 Raven does not automatically install itself. You must do that yourself. See hooks.txt
 for installation ideas.
 
+Use server.cna to manage Raven's C2. This script is required to run on the system
+with the webserver that Raven will call back to.
+
+Have your distributed team load client.cna to give themselves a user interface that
+they may use to manage Raven. Any number of people may manage Raven.
+
+This example is provided as a way to demonstrate Cortana's ability to integrate 
+third-party agents into the workflow of Armitage and Cobalt Strike.
+
 -----------------
 Compiling: 
 -----------------
 1. Install mingw
-2. type: build
+2. type: build (or ./build.sh on Linux if you have MinGW there)
 
 -----------------
 Patching:

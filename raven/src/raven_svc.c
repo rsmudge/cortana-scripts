@@ -1,4 +1,4 @@
-#include <Wininet.h>
+#include <wininet.h>
 #include <windows.h>
 #include "raven.h"
 

