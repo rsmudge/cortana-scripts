@@ -24,7 +24,7 @@ global('$WEBROOT $WEBLOG');
 $WEBROOT = "/var/www/";
 
 # where is your Apache2 access.log?
-$WEBLOG = "/var/log/apache2/access.log"
+$WEBLOG = "/var/log/apache2/access.log";
 
 # this event fires when a command is published by client.cna
 on raven_command {
@@ -59,7 +59,7 @@ fork({
 			publish("raven_checkin", %(host => $host, uri => $uri, status => $status, size => $size));
 		}
 	}
-});
+}, \$WEBLOG);
 
 # subscribe to any commands client.cna publishes. Check every 10s for new ones.
 subscribe('raven_command', '', '10s');
