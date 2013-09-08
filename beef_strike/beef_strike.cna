@@ -1,4 +1,4 @@
-# Beef interaction by benyG
+# BeEF and Armitage integration  - by benyG
 # Tested on backtrack5r3
 # video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
 
@@ -24,11 +24,6 @@ $first = 0 ;        # first beef's zombie id
 
 popup attacks {
 	menu "BeEF Strike"{
-
-#	iten "e" {cmd($console, "beef_online");
-#		@beef_zb = @(%());
-#		@beef_zb = parse_table("",);
-#		}
 
 		item "Connect" {
 		# Default value of Auto-import & Client-side auto-recon.
