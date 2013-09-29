@@ -1,0 +1,111 @@
+# Post-play -  by benyG
+# 
+# This script can be usefull for fast and very basic post-exploitation automation task. 
+# By using it, you are able to define a command list that will be execute once 
+# a meterpreter or shell session are created. You also have the possibility to run quickly a list
+# of command again a specific target. Commands are stored in a text file (one per line).
+
+menubar("Post-play", "postattack", 2);
+
+on ready {
+$con = console();
+$con = open_console_tab ("Post-play","all","postplay_hook",1);
+prompt($con, "\UPost-play\U >");
+append($con, "Post-play script ready to receive command file");
+say("Post-play script launch");
+}
+
+@cmdshell = @();
+@cmdmeter = @();
+
+popup postattack {
+		item "meterpreter autorun script" {
+		takecommand_m();
+			}
+		item "shell autorun script" {
+		takecommand_s();
+			}
+		item "Console" {$con = open_console_tab ("Post-play","all","postplay_hook",1);}
+		}
+
+sub takecommand_s {
+	$file = prompt_file_open();
+	$handlef = openf($file);
+	$i = 0;
+	append($con, " +---------- Shell autorun script ----------+");	
+	while $readf (readln($handlef)){
+	@cmdshell[$i] = $readf; 
+	println($readf);
+	append($con, $readf);	
+#	println(@cmdshell);
+	 $i++ ;		
+		} 
+	append($con, " +-----------------------------------------+ ");	
+	}
+
+sub takecommand_m {
+	$file = prompt_file_open();
+	$handlef = openf($file);
+	$i = 0;
+	append($con, " +-------- Meterpreter autorun script ------+ ");
+	while $readf (readln($handlef)){
+	@cmdmeter[$i] = $readf; 
+	println($readf);
+	append($con, $readf);
+#	println(@cmdmeter);
+	 $i++ ;		
+		} 
+	append($con, " +-----------------------------------------+");	
+	}
+#################################
+popup meterpreter_bottom {
+	item "Post-play" {
+		$scr = prompt_file_open();
+		$handlescr = openf($scr);
+		println("\c9metereter \c9" . $1 . ">");	 
+		while $cmd_meter (readln($handlescr)){
+			println("\U" . $cmd_meter . "\U");
+			append($con, "" . $cmd_meter . "");
+			m_cmd($1, $cmd_meter);		
+			}	
+		}	
+	}
+popup shell_bottom {
+	item "Post-play" {
+		$cmdf = prompt_file_open();
+		$handlecmdf = openf($cmdf);
+		println("\c9shell \c9" . $1 . ">");	 
+		while $cmd_sh (readln($handlecmdf)){
+			println("\U" . $cmd_sh . "\U");
+			append($con, "" . $cmd_sh . "");
+			s_cmd($1, $cmd_sh);
+			}	
+		}
+	}
+################################
+on session_open {
+	if (!-isshell $1){
+	#	return;}
+	foreach $index => $value (@cmdshell){
+	println("\c9shell \c9" . $1 . ">");
+	println("\U" . $value . "\U");
+	append($con, "\c9shell \c9" . $1 . ">");
+	append($con, "" . $value . "");	 	 
+	s_cmd($1, $value); }
+	}
+}
+on session_sync {
+	#if (!-iswinmeterpreter $1){
+	#	return;}
+	foreach $index => $value (@cmdmeter){
+	println("\c9metereter \c9" . $1 . ">");
+	println("\U" . $value . "\U");
+	append($con, "\c9metereter \c9" . $1 . ">");
+	append($con, "" . $value . "");	 
+	m_cmd($1, $value); }
+	}
+###############################
+
+on meterpreter {println($3); append($con, $3);	}
+on shell {println($3); append($con, $3);}
+
