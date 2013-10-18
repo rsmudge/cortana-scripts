@@ -29,7 +29,7 @@ For use this script you need to
 
 4. Load beef_strike.cna cortana script. A sub new menu will appear on the attack menu
 
-5. Connect to your Beef server instance.
+5. Connect to your Beef server instance and put your RESTful API key.
 
 6. Begin the zombies recruitment with ettercap method. In this folder you will find the infect.filter file. 
    This is the default file for html injection. You must change it and point to your beef server. 
@@ -42,6 +42,13 @@ For use this script you need to
    You have profiling the victim browser (you can see result on zombies menu item). 
    Now feel free to use client-side exploits and send to your zombies through beef invisible iframe module. 
 
+9. To use drive-by option and send invisible iframe throught armitage you need to provide the beef's session ID of 
+   the hooked browser. 
+	Easy tips : --> Attack menu -> Beef_Strike -> Zombies -> right click on a zombie
+		       -> Beef action -> information -> switch on Beef Strike Tab -> copy the value of BEEFHOOK cookie (session ID)
+                       -> Switch to zombies tab -> right click the same zombie -> drive-by -> paste session ID -> put the URL of your iframe
+		       -> Now you can refresh zombie tab, session ID have been recorded.
+        See ? easy !
 ----------------------------------------------------------------------------------------------------------------+
 Tested on Backtrack5r3
 video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
@@ -53,14 +60,13 @@ video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xe
   So if you try to add host while this script is running, you will falsify final result. 
   Do your recruitment and Let Beef_strike add host for you. 
 
-* The actual drive-by option just use default value since beef command is not really effective.
+
 
 - TO CAME -
 * better beef_strike and beef communication
 * mitmproxy html injection method
-* drive-by option for being able to send iframe directly from armitage 
 
+- credits -
+Browser's icon : http://speckyboy.com/2010/08/09/30-fresh-and-free-icon-sets-for-designers-and-developers/
 
 Work in progress...
-
-	 

