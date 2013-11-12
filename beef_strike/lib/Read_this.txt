@@ -1,0 +1,24 @@
+Beef_Strike use json-lib to parse JSON string you can download the binaries and put inside on this folder
+
+http://sourceforge.net/projects/json-lib/files/
+
+Json-lib requires (at least) the following dependencies in your classpath:
+
+jakarta commons-lang 2.5
+jakarta commons-beanutils 1.8.0
+jakarta commons-collections 3.2.1
+jakarta commons-logging 1.1.1
+ezmorph 1.0.6
+
+-------------------------------------------------------------------------------------------------------------+ 
+Can be download here:
+  
+http://mirror.sdunix.com/apache//commons/beanutils/binaries/commons-beanutils-1.8.3-bin.zip
+http://apache.petsads.us//commons/io/binaries/commons-io-2.4-bin.zip
+ftp://apache.cs.utah.edu/apache.org//commons/collections/binaries/commons-collections4-4.0-alpha1-bin.zip
+http://mirror.cc.columbia.edu/pub/software/apache//commons/logging/binaries/commons-logging-1.1.3-bin.zip
+http://sourceforge.net/projects/ezmorph/
+
+icons
+http://speckyboy.com/2010/08/09/30-fresh-and-free-icon-sets-for-designers-and-developers/
+

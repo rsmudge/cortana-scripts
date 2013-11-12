@@ -5,6 +5,8 @@
 The purpose of this script is to automate the sending of some  commands of BeEF_xss 
 and allow to control the zombies directly through the intuitive armitage's interface.
 The ultimate goal would be to work on armitage as if you was in  the web panel of beef
+Beef_Strike can help you write script for automatic and targeted browser's exploitation.
+
 
 - WHAT IT DO -
 * auto load metasploit's beef plugin
@@ -22,16 +24,19 @@ For use this script you need to
 1. Download and install 
    BeEF Metasploit Plugin from Christian Frichot github repository.
    https://github.com/xntrik/beefmetasploitplugin
+   
+2. Download and install all libraries listed on the read_this file located on the lib folder
+   And modify the  "import" lines on beef_strike script to point to the right path.
 
-2. The ettercap command must be able to launch ettercap installation. [That is the case in Backtrack & Kali].
+3. The ettercap command must be able to launch ettercap installation. [That is the case in Backtrack & Kali].
 
-3. Launch Beef xss server and Armitage
+4. Launch Beef xss server and Armitage
 
-4. Load beef_strike.cna cortana script. A sub new menu will appear on the attack menu
+5. Load beef_strike.cna cortana script. A sub new menu will appear on the attack menu
 
-5. Connect to your Beef server instance and put your RESTful API key.
+6. Connect to your Beef server instance and put your RESTful API key.
 
-6. Begin the zombies recruitment with ettercap method. In this folder you will find the infect.filter file. 
+6. Begin the zombies recruitment. You can use xss exploitation or ettercap method. In this folder you will find the infect.filter file. 
    This is the default file for html injection. You must change it and point to your beef server. 
    The default value is the localhost address and port 3000 the default port of beef server
    Have fun with ettercap filter: http://www.irongeek.com/i.php?page=security/ettercapfilter
@@ -42,12 +47,6 @@ For use this script you need to
    You have profiling the victim browser (you can see result on zombies menu item). 
    Now feel free to use client-side exploits and send to your zombies through beef invisible iframe module. 
 
-9. To use drive-by option and send invisible iframe throught armitage you need to provide the beef's session ID of 
-   the hooked browser. 
-	Easy tips : --> Attack menu -> Beef_Strike -> Zombies -> right click on a zombie
-		       -> Beef action -> information -> switch on Beef Strike Tab -> copy the value of BEEFHOOK cookie (session ID)
-                       -> Switch to zombies tab -> right click the same zombie -> drive-by -> paste session ID -> put the URL of your iframe
-		       -> Now you can refresh zombie tab, session ID have been recorded.
         See ? easy !
 ----------------------------------------------------------------------------------------------------------------+
 Tested on Backtrack5r3
@@ -55,18 +54,14 @@ video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xe
 - 
 
 - LIMITATION -
-* At this time, This script doesn't use the beef_online command of beef metasploit plugin
-  to update zombies list. At result, but it try to reproduce it. 
-  So if you try to add host while this script is running, you will falsify final result. 
-  Do your recruitment and Let Beef_strike add host for you. 
+  The result of some command can only be see on Beef web ui 
 
 
 
 - TO CAME -
-* better beef_strike and beef communication
 * mitmproxy html injection method
+* DroNe script, a script for automatic and targeted browsser's exploitation based on their very specific profiles.
 
-- credits -
-Browser's icon : http://speckyboy.com/2010/08/09/30-fresh-and-free-icon-sets-for-designers-and-developers/
+
 
 Work in progress...
