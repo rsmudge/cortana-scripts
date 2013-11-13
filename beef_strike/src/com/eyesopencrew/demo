@@ -1,0 +1,23 @@
+package eyesopensec;
+
+import net.sf.json.JSONObject;
+import net.sf.json.JSONSerializer;
+
+/**
+ *
+ * @author The-BenyGreen
+ */
+public class NewMain {
+   public static String hooks;
+    public static void main(String[] args) {
+        // TODO code application logic here
+        String jsonTxt = "{\"hooked-browsers\":{\"online\":{\"0\":{\"id\":1,\"session\":\"oEXEG6IC41b29JtJ5huJaz\",\"name\":\"S\",\"version\":\"UNKNOWN\",\"os\":\"Linux\",\"platform\":\"Linux i686\",\"ip\":\"192.168.1.110\",\"domain\":\"192.168.1.110\",\"port\":\"4000\",\"page_uri\":\"basic.html\"}},\"offline\":{}}}";
+        System.out.println("Result: " + OnlineClass.extractZombieData(jsonTxt, 0, "ip") + " >> " + OnlineClass.extractZombieData(jsonTxt, 0, "session"));
+
+        String a = "http://192.168.1.23:4000/api/modules?token=86a09ffe2942a64a7670484401524f864e401b9a";
+       String j = BeefRequester.BeefGetRequest(a);
+      int c = CommandList.extractCommands(j).length ;
+      System.out.println(c);
+        System.out.println(CommandList.extractOnecmd(j, 108).getName());
+  }
+}
