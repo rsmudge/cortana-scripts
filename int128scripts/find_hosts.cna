@@ -12,7 +12,7 @@ popup hosts_nmap {
 			$r = rand(253) + 1;
 			$decoy = $decoy . "," . $segments[0] . "." . $segments[1] . "." . $segments[2] . "." . $r; 
 		}
-		$scan_string = "db_nmap -sV $decoy -O -n -p 22,445 $net_block";
+		$scan_string = "db_nmap -sV -O -A $net_block";
 		$console = open_console_tab("Continous Scan");
                 cmd_echo($console, "Starting Continous scan, close tab to cancel");
 		on heartbeat_1m {
