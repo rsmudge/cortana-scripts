@@ -1,41 +1,47 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package com.eyesopencrew;
+
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Beny Green - gacksecurity.blogspot.com
  *
  * EyesOpenCrew
  */
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-
-/**
- *
- * @author Administrateur
- */
 public class BeefRequester {
-    private static String hooks;
-    private static String details;
-
-    private static String beefConnect(String url, String login, String pass){
-    String key = null;
-    return key;}
-
+    private static String infos;
+    
     /**
      *
      * @param beefUrl
      * @return
      */
     public static String BeefGetRequest(String beefUrl) {
+
+        BeefRequestThread beefthrd = new BeefRequestThread(beefUrl);
+        beefthrd.start();
+        try {
+            beefthrd.join(10000); // limit to 10 seconds
+            //System.out.println("After that: " + beefthrd.getHooks());
+            return beefthrd.getHooks();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(BeefRequester.class.getName()).log(Level.SEVERE, null, ex);
+        }
+       if ( beefthrd.getHooks().equals("NULL")){
+            System.out.println(" Empty ");
+            }
+   
+        return beefthrd.getHooks();
+    }
+
+    public static String BeefGetRequestNoThread(String beefUrl) {
 
             try {
 
@@ -54,9 +60,8 @@ public class BeefRequester {
 			String output;
                         //String t = br.readLine();
 			while ((output = br.readLine()) != null) {
-
 				//System.out.println(output);
-                                BeefRequester.setHooks(output);
+                                BeefRequester.setInfos(output);
 			}
 
 			conn.disconnect();
@@ -69,43 +74,19 @@ public class BeefRequester {
 			e.printStackTrace();
 
 		}
-          return hooks;
+          return infos;
     }
 
     public static String BeefPostRequest(String beefUrl){
-     String result = null; // Not implemented in fact, Curl is good.
+     String result = null;
      return result ;}
 
-    /**
-     * 
-     * @return
-     */
-    public static String getHooks() {
-        return hooks;
+    public static String getInfos() {
+        return infos;
     }
 
-    /**
-     *
-     * @param hooks
-     */
-    public static void setHooks(String hooks) {
-        BeefRequester.hooks = hooks;
+    public static void setInfos(String infos) {
+        BeefRequester.infos = infos;
     }
 
-    /**
-     *
-     * @return
-     */
-    public static String getDetails() {
-        return details;
-    }
-
-    /**
-     *
-     * @param details
-     */
-    public static void setDetails(String details) {
-        BeefRequester.details = details;
-    }
-
-   }
+}

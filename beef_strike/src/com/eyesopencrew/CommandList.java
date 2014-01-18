@@ -44,8 +44,11 @@ if (jsonCommandlist.isEmpty()){
 
     public static Commands extractOnecmd(String jsontxt , int rang) {
              Commands cmdGroup[] = CommandList.extractCommands(jsontxt);
-        return cmdGroup[rang];
-       }
+        try {
+             return cmdGroup[rang];
+             }
+        catch (ArrayIndexOutOfBoundsException e){return null;}
+            }
   
     public static String extractcmdData(String jsontxt , int rang, String value) {
     
