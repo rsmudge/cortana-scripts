@@ -50,6 +50,7 @@ if (online.isEmpty()){
           return zombieGroup ;
          }
       }
+
     /**
      * 
      * @param jsontxt
@@ -60,9 +61,12 @@ if (online.isEmpty()){
      */
     public static Zombies extractOneZombie(String jsontxt , int rang) {
         Zombies zombieGroup[] = OnlineClass.extractOnline(jsontxt);
-        return zombieGroup[rang];
+        try {
+             return zombieGroup[rang];
+           }
+        catch (ArrayIndexOutOfBoundsException e){return null;}
        
-       }
+            }
     /**
      *
      * @param jsontxt

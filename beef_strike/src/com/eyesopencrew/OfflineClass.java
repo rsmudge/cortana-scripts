@@ -19,12 +19,15 @@ public class OfflineClass {
      * 
      */
     public static Zombies[] extractOffline(String jsontxt){
-      
-      JSONObject json = (JSONObject) JSONSerializer.toJSON( jsontxt );
+
+        JSONObject json = new JSONObject();
+        json = (JSONObject) JSONSerializer.toJSON( jsontxt );
+     // JSONObject json = (JSONObject)
+
       JSONObject Offline = json.getJSONObject("hooked-browsers").getJSONObject("offline");
         Zombies zombieGroup[] = new Zombies[Offline.size()];
 if (Offline.isEmpty()){
-    System.out.println("You have No zombie bro !");
+    System.out.println("You have No zombie offline !");
 } else{
        for (int i = 0; i < Offline.size(); i++){
 
@@ -57,7 +60,11 @@ if (Offline.isEmpty()){
      */
     public static Zombies extractOneZombie(String jsontxt , int rang) {
              Zombies zombieGroup[] = OfflineClass.extractOffline(jsontxt);
-        return zombieGroup[rang];
+try {
+             return zombieGroup[rang];
+        }
+catch (ArrayIndexOutOfBoundsException e){return null;}
+          
        }
     /**
      *
