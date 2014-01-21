@@ -1,20 +1,11 @@
 # load into hosts_nmap
 # To Do:  Allow user to choose heartbeat & number of decoy hosts
 popup hosts_nmap {
-	item "Continous_Scan" {
+	item "Continuous_Scan" {
 		$net_block = prompt_text("Enter the network: i.e. 192.168.1.0/24");
-		$local_ip = lhost();
-		$segments = split('\.', $local_ip);
-		$r = rand(253) + 1; #+1 due to rand starting at 0
-		$decoy = "-D " . $segments[0] . "." . $segments[1] . "." . $segments[2] . "." $r;
-		for ($d = 0; $d < 10; $d++) #max of 128 decoy's by default of nmap.h 
-		{
-			$r = rand(253) + 1;
-			$decoy = $decoy . "," . $segments[0] . "." . $segments[1] . "." . $segments[2] . "." . $r; 
-		}
 		$scan_string = "db_nmap -sV -O -A $net_block";
-		$console = open_console_tab("Continous Scan");
-                cmd_echo($console, "Starting Continous scan, close tab to cancel");
+		$console = open_console_tab("Continuous Scan");
+                cmd_echo($console, "Starting Continuous scan, close tab to cancel");
 		on heartbeat_1m {
 			cmd($console, "$scan_string");
 		}
