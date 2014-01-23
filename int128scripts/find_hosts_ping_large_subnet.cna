@@ -1,0 +1,13 @@
+# load into hosts_nmap
+# ariccio: great for enumerating many hosts on large networks, scans my university /16 in a few minutes; gets 85%+ of hosts
+popup hosts_nmap {
+	item "In_Depth_Scan" {
+		$net_block = prompt_text("Enter the network: i.e. 192.168.1.0/16");
+		$rtt_timeout = prompt_text("Enter a value for --max-rtt-timeout, '250ms' recommended");
+		$scan_string = "db_nmap -p 80 -T5 -n --max-rtt-timeout $rtt_timeout --max-scan-delay 0ms -PE -PM -PP -PO -PY $net_block";
+		$console = open_console_tab("In_Depth_Scan");
+                cmd_echo($console, " @host_addresses ");
+		cmd($console, "$scan_string");
+	}
+}	
+
