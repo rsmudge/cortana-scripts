@@ -109,23 +109,6 @@ popup attacks {
 				$id_result = $id_result + 1 ;
 			}
 		}
-		menu "IP Geolocation" { 
-					item "Satellite type" {
-					$iploc = prompt_text("IP to localize ","8.8.8.8");
-					$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
-					$maptype = "satellite";
-					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
-					geomap($json_freegeoip, $maptype);
-					}
-					item "Roadmap type" {
-					$iploc = prompt_text("IP to localize ","8.8.8.8");
-					send_beef_cmd_without_param($sessidr, $code_geoloc);
-					$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
-					$maptype = "roadmap";
-					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
-					geomap($json_freegeoip, $maptype);
-					}		
-				}
 		item "BeEF Console" {
 				$console = open_console_tab ("Beef Strike","all","zmb_hook",1);
 				cmd($console , "load beef");
@@ -137,6 +120,25 @@ popup attacks {
 				}
 
 	}
+}
+
+popup hosts_top {
+	menu "IP Geolocation" { 
+		item "Satellite type" {
+			$iploc = prompt_text("IP to localize ","8.8.8.8");
+			$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
+			$maptype = "satellite";
+			$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+			geomap($json_freegeoip, $maptype);
+		}
+		item "Roadmap type" {
+			$iploc = prompt_text("IP to localize ","8.8.8.8");
+			$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
+			$maptype = "roadmap";
+			$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+			geomap($json_freegeoip, $maptype);
+					}		
+				}
 }
 
 on host_add {cmd($console , "\n \c9 [+] New zombie with IP: $1");}
@@ -624,6 +626,20 @@ popup host_bottom {
 			$zombitable = open_table_tab("zombies", "", @("id", "ip","name","version","OS","platform", "domain", "port", "URI", "sessionID"), @(), @("Refresh","More details"), "zmb_hook", 1);
 			refresh_hosts($zombitable);
 			}
+	menu "Geolocate" {
+			item "Satellite type" {
+				$freegeoip_url = "http://freegeoip.net/json/" . $1 . "";
+				$maptype = "satellite";
+				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+				geomap($json_freegeoip, $maptype);
+				}
+			item "Roadmap type" {
+				$freegeoip_url = "http://freegeoip.net/json/" . $1 . "";
+				$maptype = "roadmap";
+				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+				geomap($json_freegeoip, $maptype);
+				}		
+		}
 }
 ######################## HOST ICON ###################################
 # when zombie is offline icon will turn red. This filter show you the browser hooked icon
@@ -690,7 +706,7 @@ sub geomap {
    $lon = [[$js get: "longitude"] toString];
    $map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&center=" . $lat . "," . $lon . "&maptype=" . $2 . "&zoom=16&sensor=false";
    $rndval = rand(9999);
-   $mapfile = "$ipmap $+ $country $+ - $+ $city $+ - $+ $rndval $+ .png" ;
+   $mapfile = "$ipmap $+ $rndval $+ .png" ;
    cmd($console , "wget \"$map_url\" -O /root/.armitage/loots/" . $mapfile . ""); sleep(1000);
    #url_open("$map_url"); # IN USE BEFORE FINISH THE IMAGE TAB
    $map_tab = open_image_tab("Geolocate", @(), @("No Image ? Try to Refresh Map","Map informations"));
