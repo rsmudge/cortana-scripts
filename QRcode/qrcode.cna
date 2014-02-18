@@ -1,0 +1,34 @@
+##   Tiny Script to generate and display QRCode by using Google chart API                ##
+##                                                                                       ##
+##                  >   by Beny Green    <						                                   ##
+##			       [  aka @TheBenyGreen	  ]		                                               ##
+###########################################################################################
+
+popup attacks {
+	item "QR Code Generator" {
+		$text2qrcode = prompt_text("Type a text (an URL for example)","http://google.com");
+		qrcode_gen($text2qrcode);
+	}		
+}
+		
+sub qrcode_gen {
+   $qrcode_url = "http://chart.apis.google.com/chart?cht=qr&chs=250x250&chl=" . $text2qrcode . "&chld=H|0";
+   $randomval = rand(99999999);
+   $qrcodeimage = "$randomval $+ .png" ;
+   cmd_async("wget \"$qrcode_url\" -O /root/.armitage/loots/" . $qrcodeimage . ""); sleep(1000);
+   $qrcode_tab = open_image_tab("QRCode", @(), @("Refresh","See text"));
+   set_image($qrcode_tab, file_get("/root/.armitage/loots/QRcode/" . $qrcodeimage . ""));
+}
+
+sub refresh_qrcode {
+	set_image($1, file_get("/root/.armitage/loots/" . $qrcodeimage . "") );
+	}
+	
+on tab_image_click {
+	if ($3 eq "Refresh") {
+		refresh_qrcode($1);
+		} 
+	if ($3 eq "See text") {
+		show_message( "Text: " . $text2qrcode . "\n-------------EO------------------\n +--- QRCodes are stored in the loots---+");
+   		} 		
+} 
