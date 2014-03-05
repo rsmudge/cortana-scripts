@@ -1,5 +1,6 @@
 +--------------------------------------------+
 +         BeEF and Armitage integration      +
++               by @thebenygreen             +
 +--------------------------------------------+
 
 The purpose of this script is to automate the sending of some  commands of BeEF_xss 
