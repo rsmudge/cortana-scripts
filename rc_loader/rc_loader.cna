@@ -1,0 +1,13 @@
+# RC loader - quickly run resource file  #
+#                                        #
+#          @thebenygreen                 #
+##########################################
+
+popup attacks {
+	item "Ressource file"{
+		$url = prompt_text("Ressource path","/root/handler.rc");
+		$cons = console();
+		$cons = open_console_tab ("Console","all","rc_hook",1);
+		cmd($cons , "resource $url");
+	   }
+}
