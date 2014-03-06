@@ -1,0 +1,34 @@
+############################################################################
+#         Give the voice to your script - @thebenygreen                    #
+############################################################################
+
+# This script demonstrate how user add voice to its cortana's bot.
+
+import com.eyesopencrew.Voice from: C:\Botvoice\BotVoice.jar ;
+import com.eyesopencrew.Notifyer from: C:\Botvoice\BotVoice.jar ;
+import com.sun.speech.freetts.* from: C:\Botvoice\lib\freetts.jar ;
+
+$voiceKevin16 = [new Voice : "kevin16"] ;
+$text_to_speech = "Hi, itz Beny Green. This script demonstrate how you can give the voice to your cortanaz bot. Text from the event log will be synthetized in voice." ;
+$bot = "" ;
+$face = "C:/BotVoice/src/com/eyesopencrew/xpre.jpg" ;
+# Bot face nice appearance.
+ $n = [new Notifyer] ;
+ [$n make_notification : $bot, $face] ;
+ [$n start] ;
+# Bot talk
+[$voiceKevin16 say: $text_to_speech];
+
+on event_write {
+	 $n = [new Notifyer] ;
+	[$n make_notification : $bot, $face] ;
+	[$n start] ;
+	[$voiceKevin16 say: $1];
+}
+
+on event_read {
+	 $n = [new Notifyer] ;
+	[$n make_notification : $bot, $face] ;
+	[$n start] ;
+	[$voiceKevin16 say: $1];
+}
