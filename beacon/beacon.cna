@@ -1,0 +1,125 @@
+#
+# This script changes the host icon for targets with active beacons
+# and adds a 'beacon' label to the host. If it finds a host that has 
+# this specific note set, it changes the host icon.
+#
+# A menu option is also implemented when you right click on a host
+# that allows you to remove the beacon entirely from the database
+# and reset the label for the host.
+#
+# 
+# To use this effectively, create a new workspace with 'Labels'
+# set to "beacon" and "Hosts with sessions only" unchecked.
+# This will display only all active hosts with beacons.
+#
+#
+# icon is from  http://www.veryicon.com/icons/file-type/holographic/communicator.html
+#   (license: free for non-commercial use)
+#
+# Built by @harmj0y
+#
+
+
+# internal list to keep track of all active beacons
+%beaconHosts = %();
+
+
+# modify the host image for any beacon
+filter host_image {
+
+    local('$address');
+    $address = $2['address'];
+
+    # if this address has an active beacon
+    if ($address in %beaconHosts){
+        # check if the .png script resource is in a subdirectory (for load_all.cna)
+        if (-exists script_resource("/beacon/beacon_image.png")){
+            # change its host icon
+            push($1, script_resource("/beacon/beacon_image.png"));
+        }
+        else{
+            # otherwise assume the resource is in the script location
+            push($1, script_resource("beacon_image.png"));
+        }
+    }
+    return @_;
+}
+
+# check the database for beacons every 5 seconds
+on heartbeat_5s {
+
+    # get all the active beacons from the database
+    @beacons = call('beacon.list');
+
+    foreach %beacon (@beacons) {
+        # %beacon => ($id, $computer, $host, $last, $external, $pid, $user, $internal)
+
+        # get the internal IP for the beacon
+        $internal = %beacon["internal"];
+
+        if ($internal ne ""){
+            # if the beacon already isn't in our internal list, add it
+            if ($internal !in @beaconHosts){
+                %beaconHosts[$internal] = %beacon["id"];
+            }
+        }
+
+        # if this beacon host isn't currently in the database, add it
+        # so it'll appear in the workspace
+        @hosts = host_addresses();
+        if ($internal !in @hosts){
+            host_add($internal);
+        }
+
+        # change the host label for this host to indicate a beacon is present
+        %label[$internal] = "beacon";
+        call_async("db.report_labels", %label);
+    }
+}
+
+# expose a remove menu for hosts
+popup host_bottom {
+
+    $address = $1;
+
+    # only expose this menu option if a beacon is active
+    if ($address in %beaconHosts) {
+
+        menu "Beacon" {
+
+            item "Interact" {
+                
+                $beaconID = %beaconHosts[$address];
+                # open up the beacon console for this particular ID
+                open_beacon_console($beaconID, "- $address", $address)
+            }
+
+            item "Kill" {
+                
+                $beaconID = %beaconHosts[$address];
+                # task the beacon to close down
+                call('beacon.task', $beaconID, pack("II", 0x03, 0), lhost());
+            }
+
+            item "Clear" {
+
+                if ($address in %beaconHosts) {
+
+                    $beaconID = %beaconHosts[$address];
+
+                    # remove the beacon from the database
+                    call('beacon.remove', $beaconID);
+                    
+                    # clear out the label
+                    %label[$address] = "";
+                    call_async("db.report_labels", %label);
+
+                    # finally, remove this from our beacon internal list
+                    removeAt(%beaconHosts, $address);
+                }
+
+            }
+
+        }
+    }
+}

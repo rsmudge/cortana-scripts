@@ -1,0 +1,96 @@
+#
+# This script continually polls the metasploit database for notes
+# output by the user_hunter.rb module.
+#
+# If it finds a host that has this specific note set, it changes
+# the host icon.
+#
+# For more information, check README.txt
+#
+# Built by @harmj0y
+#
+
+global('@userhosts @hostsusers');
+%hostsusers = %();
+
+on ready {
+    println("[*]");
+    println("[+] User_hunter v1.0 loaded");
+    println("[*]");
+}
+
+# check the database for our user.hunter notes every 5 seconds
+on heartbeat_5s {
+
+    # pull in all notes from the msf database
+    @notes = call("db.notes")["notes"];
+
+    foreach %note (@notes) {
+        
+        local('$host $user');
+        $host = %note["host"];
+        
+        # check for our custom note type
+        if (%note["ntype"] eq "user.hunter") {
+            if ($host ne ""){
+                # if the host has our user.hunter note, store the data in %hostusers
+                if ($host !in %hostsusers){
+                    %hostsusers[$host] = base64d(%note["data"]);
+                }
+            }
+        }
+    }
+}
+
+sub invokeUserHunter {
+    
+    println("[*] Starting user hunter on ".session_host($1)." session $1");
+    say("[*] Starting user hunt on ".session_host($1)." session $1");
+    
+    # launch user_hunter with default options (i.e. "Domain Admins")
+    launch("post", "windows/gather/user_hunter", %(SESSION => "$1") );
+    
+}
+
+# adds an option to invoke user_hunter.rb on a meterpreter session
+popup meterpreter_top {
+    
+    item "User Hunter" { 
+        invokeUserHunter($1);
+    }
+}
+
+# when an icon is rendered for a host, highlight if they have a user logged in
+filter host_image {
+    local('$address $sid');
+    $address = $2['address'];
+
+    # if the host rendering is in our found list, change the icon
+    if ($address in %hostsusers){
+
+        # check if the .png script resource is in a subdirectory (for load_all.cna)
+        if (-exists script_resource("/user_hunter/user_yellow.png")){
+            # change its host icon
+            push($1, script_resource("/user_hunter/user_yellow.png"));
+        }
+        else{
+            # otherwise assume the resource is in the script location
+            push($1, script_resource("user_yellow.png"));
+        }
+
+        # change the host label
+        %label[$address] = %hostsusers[$address];
+        
+        # change the label for this host to include the user name found
+        call_async("db.report_labels", %label);
+    }
+    
+    return @_;
+    
+}
+
+# base64 decodes a notes data object from the msf database
+sub base64d {   
+    # chop off the initial cruft and return the string data
+    return substr([msf.Base64 decode: $1], 4);
+}
