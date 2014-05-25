@@ -4,12 +4,15 @@ package com.eyesopencrew;
  * @author Beny Green - gacksecurity.blogspot.com
  * EyesOpenCrew -
  *
- * Object representation of one command from command list.
+ * Object representation of one autorun entry from beefstrike.
  */
-public class Commands {
+public class Autorun {
+  private String cc;
   private String id;
   private String name;
+  private String browser;
   private String category;
+  private String Param;
 
      /**
    *
@@ -47,6 +50,30 @@ public class Commands {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getParam() {
+        return Param;
+    }
+
+    public void setParam(String Param) {
+        this.Param = Param;
+    }
+
+    public String getBrowser() {
+        return browser;
+    }
+
+    public void setBrowser(String browser) {
+        this.browser = browser;
+    }
+
+    public String getCc() {
+        return cc;
+    }
+
+    public void setCc(String cc) {
+        this.cc = cc;
     }
 
 
