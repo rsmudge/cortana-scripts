@@ -26,6 +26,7 @@ public class OnlineClass {
       
       Zombies[] zombieGroup = new Zombies[online.size()];
 if (online.isEmpty()){
+    System.out.println("You have No zombie bro !");
     return zombieGroup ;
 } else{
         for (int i = 0; i < online.size(); i++){
