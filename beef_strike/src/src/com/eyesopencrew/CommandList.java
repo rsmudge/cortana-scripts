@@ -10,7 +10,7 @@ import net.sf.json.JSONSerializer;
  * EyesOpenCrew
  */
 public class CommandList {
-//List of Commandes modules of BeEF
+//List of Commands modules of BeEF
     /**
      *
      * @param jsontxt
@@ -24,7 +24,7 @@ public class CommandList {
       //JSONObject Offline = json.getJSONObject("hooked-browsers").getJSONObject("offline");
         Commands Commandslist[] = new Commands[jsonCommandlist.size()];
 if (jsonCommandlist.isEmpty()){
-    System.out.println("No Command, may be your API key is incorrect !");
+   
 } else{
        for (int i = 0; i < jsonCommandlist.size(); i++){
 

@@ -9,30 +9,30 @@ import net.sf.json.JSONSerializer;
  *
  * EyesOpenCrew
  */
-
-public class OnlineClass {
-
+public class OfflineClass {
+//List of offline zombies
     /**
      *
      * @param jsontxt
-     * @return Zombies[]
-     *
-     *   - Extract zombies obtained from Json representation.
+     * @return Zombie[]
+     *   - Extract offline zombies from Json representation.
+     * 
      */
-    public static Zombies[] extractOnline(String jsontxt){
-      
-      JSONObject json = (JSONObject) JSONSerializer.toJSON( jsontxt );
-      JSONObject online = json.getJSONObject("hooked-browsers").getJSONObject("online");
-      
-      Zombies[] zombieGroup = new Zombies[online.size()];
-if (online.isEmpty()){
-    System.out.println("You have No zombie bro !");
-    return zombieGroup ;
+    public static Zombies[] extractOffline(String jsontxt){
+
+        JSONObject json = new JSONObject();
+        json = (JSONObject) JSONSerializer.toJSON( jsontxt );
+     // JSONObject json = (JSONObject)
+
+      JSONObject Offline = json.getJSONObject("hooked-browsers").getJSONObject("offline");
+        Zombies zombieGroup[] = new Zombies[Offline.size()];
+if (Offline.isEmpty()){
 } else{
-        for (int i = 0; i < online.size(); i++){
-            try {
+       for (int i = 0; i < Offline.size(); i++){
+
+             try {
       Zombies zombie = new Zombies();
-      JSONObject zombieid = online.getJSONObject(""+i);
+      JSONObject zombieid = Offline.getJSONObject(""+i);
       zombie.setSession(zombieid.getString("session"));
       zombie.setName(zombieid.getString("name"));
       zombie.setVersion(zombieid.getString("version"));
@@ -43,30 +43,28 @@ if (online.isEmpty()){
       zombie.setDomain(zombieid.getString("domain"));
       zombie.setPage_uri(zombieid.getString("page_uri"));
       zombieGroup[i] = zombie;
-     //System.out.println(zombieGroup[i].getOs());
-             }
-   catch (JSONException e){System.out.println( "ERROR: " + e );}
-     }
+                 }
+    catch (JSONException e){System.out.println( "ERROR: " + e );}
+}
+        }
           return zombieGroup ;
-         }
       }
-
     /**
-     * 
+     *
      * @param jsontxt
      * @param rang
      * @return Zombies
      *
-     * Extract one online zombie obtained from a Json representation.
+     * Extract one offline zombie obtained from Json representation.
      */
     public static Zombies extractOneZombie(String jsontxt , int rang) {
-        Zombies zombieGroup[] = OnlineClass.extractOnline(jsontxt);
-        try {
+             Zombies zombieGroup[] = OfflineClass.extractOffline(jsontxt);
+try {
              return zombieGroup[rang];
-           }
-        catch (ArrayIndexOutOfBoundsException e){return null;}
-       
-            }
+        }
+catch (ArrayIndexOutOfBoundsException e){return null;}
+          
+       }
     /**
      *
      * @param jsontxt
@@ -74,11 +72,11 @@ if (online.isEmpty()){
      * @param value
      * @return String
      *
-     * * extract a particular data about a particular online zombie obtained from a Json representation.
+     * Extract a particular data about a particular offline zombie obtained from a Json representation.
      */
     public static String extractZombieData(String jsontxt , int rang, String value) {
-
-       Zombies zombieGroup[] = OnlineClass.extractOnline(jsontxt);
+    
+        Zombies zombieGroup[] = OfflineClass.extractOffline(jsontxt);
        String a = null;
 
         if (value.equals("session")){ a = zombieGroup[rang].getSession(); }
@@ -93,4 +91,6 @@ if (online.isEmpty()){
         return a ;
        }
  }
+
+
 

@@ -4,7 +4,7 @@ package com.eyesopencrew;
  * @author Beny Green - gacksecurity.blogspot.com
  * EyesOpenCrew -
  *
- * Object representation of one commandes from command list.
+ * Object representation of one command from command list.
  */
 public class Commands {
   private String id;
