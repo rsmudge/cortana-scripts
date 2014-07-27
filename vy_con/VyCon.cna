@@ -147,7 +147,7 @@ sub vyatta_tab {
 	$table = open_table_tab("Vyatta Routers", $null,
 		@('host', 'session', 'label', 'info'),										#cols
 		@tablevy,													#rows
-		@("Refresh", "Remove", "Add User","Remove User", "Run Command", "Dump Config", "Backdoor Root Key"),		#buttons	
+		@("Refresh", "Remove", "Add User","Remove User", "Run Command", "Backdoor Root Key"),		#buttons	
 		"vytab_menu",													#handler
 		1);														#yes multi
 }
@@ -196,11 +196,6 @@ on tab_table_click {
 			backdoor_key($row[0], $pub_key);
 		}
 	}
-	if ($3 eq "Dump Config") {
-		foreach $row (table_selected($table, "session")){
-			backdoor_key($row[0], $pub_key);
-		}
-	}	
 
 }
 
