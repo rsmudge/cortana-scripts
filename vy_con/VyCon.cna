@@ -238,26 +238,34 @@ on tab_table_click {
 	if ($3 eq "Add User") {
 		$un = prompt_text("Username:");
 		$pass = prompt_text("Plaintext Password:");
-		foreach $row (table_selected($table, "session")){
-			add_user($row[0], $un, $pass);
-		}
+		if($un ne $null && $pass ne $null){
+			foreach $row (table_selected($table, "session")){
+				add_user($row[0], $un, $pass);
+			}
+		} 
 	}
 	if ($3 eq "Remove User") {
 		$un = prompt_text("Username:");
-		foreach $row (table_selected($table, "session")){
-			remove_user($row[0], $un);
+		if ($un ne $null){
+			foreach $row (table_selected($table, "session")){
+				remove_user($row[0], $un);
+			}
 		}
 	}
 	if ($3 eq "Run Vy Cmd") {
 		$cmd = prompt_text("Vy Command:");
-		foreach $row (table_selected($table, "session")){
-			run_vbash_cmd($row[0], $cmd);
+		if ($cmd ne $null){
+			foreach $row (table_selected($table, "session")){
+				run_vbash_cmd($row[0], $cmd);
+			}
 		}
 	}
 	if ($3 eq "Run Bash Cmd") {
 		$cmd = prompt_text("Bash Command:");
-		foreach $row (table_selected($table, "session")){
-			run_bash_cmd($row[0], $cmd);
+		if($cmd ne $null){
+			foreach $row (table_selected($table, "session")){
+				run_bash_cmd($row[0], $cmd);
+			}
 		}
 	}
 	if ($3 eq "Backdoor Root Key") {
