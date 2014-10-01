@@ -458,9 +458,10 @@ popup zmb_hook {
 			$sessidr = @sessidr[0];
 			host_os($adr,$osr);
 		menu "Informations" {
-			item "Fingerprint" {zombi_info($idr);}
-			item "logs" {zombi_log($sessidr);}
-			}			
+			zombi_info($idr);
+			#item "Fingerprint" {}
+			#item "logs" {zombi_log($sessidr);}
+			}				
 		menu "Recon." {
 			item "Port scan" { 
 				send_beefcmd_with_param($sessidr, $code_portscan, $cmde_param, 1, $adr);
