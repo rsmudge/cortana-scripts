@@ -4,7 +4,7 @@ package com.eyesopencrew;
  * @author Beny Green - gacksecurity.blogspot.com
  * EyesOpenCrew -
  *
- * Object representation of one zombie.
+ * Object representation of one zombi.
  */
 public class Zombies {
   private String id;

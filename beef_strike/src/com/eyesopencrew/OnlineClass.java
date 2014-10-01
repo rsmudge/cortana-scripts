@@ -17,7 +17,7 @@ public class OnlineClass {
      * @param jsontxt
      * @return Zombies[]
      *
-     *   - Extract zombies obtained from Json representation.
+     *   - Extract zombis obtained from Json representation.
      */
     public static Zombies[] extractOnline(String jsontxt){
       
@@ -56,7 +56,7 @@ if (online.isEmpty()){
      * @param rang
      * @return Zombies
      *
-     * Extract one online zombie obtained from a Json representation.
+     * Extract one online zombi obtained from a Json representation.
      */
     public static Zombies extractOneZombie(String jsontxt , int rang) {
         Zombies zombieGroup[] = OnlineClass.extractOnline(jsontxt);
@@ -73,7 +73,7 @@ if (online.isEmpty()){
      * @param value
      * @return String
      *
-     * * extract a particular data about a particular online zombie obtained from a Json representation.
+     * * extract a particular data about a particular online zombi obtained from a Json representation.
      */
     public static String extractZombieData(String jsontxt , int rang, String value) {
 

@@ -9,6 +9,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.sf.json.JSONObject;
+import net.sf.json.JSONSerializer;
 
 /**
  * @author Beny Green - gacksecurity.blogspot.com
@@ -23,7 +25,7 @@ public class BeefRequester {
      * @param beefUrl
      * @return
      */
-    public static String BeefGetRequest(String beefUrl) {
+    public static String BeefGetRequest(String beefUrl)  {
 
         BeefRequestThread beefthrd = new BeefRequestThread(beefUrl);
         beefthrd.start();
@@ -41,6 +43,11 @@ public class BeefRequester {
         return beefthrd.getHooks();
     }
 
+    /**
+     *
+     * @param beefUrl
+     * @return
+     */
     public static String BeefGetRequestNoThread(String beefUrl) {
 
             try {
@@ -67,26 +74,59 @@ public class BeefRequester {
 			conn.disconnect();
 
 		} catch (MalformedURLException e) {
-
-			e.printStackTrace();
 		} catch (IOException e) {
-
-			e.printStackTrace();
-
 		}
           return infos;
     }
 
+    /**
+     *
+     * @param beefUrl
+     * @return
+     */
     public static String BeefPostRequest(String beefUrl){
      String result = null;
      return result ;}
 
+    /**
+     *
+     * @param jsonstr
+     * @return
+     */
+    public String getResultID(String jsonstr) {
+         JSONObject jsrs = new JSONObject();
+	 jsrs = (JSONObject) JSONSerializer.toJSON(jsonstr);
+	String id_result = jsrs.getString("command_id");
+        return id_result;
+    }
+    /**
+     *
+     * @return
+     */
     public static String getInfos() {
         return infos;
     }
 
+    /**
+     *
+     * @param infos
+     */
     public static void setInfos(String infos) {
         BeefRequester.infos = infos;
     }
 
+    /**
+     * @param jsontxt
+     * @param key
+     * Special addition for geolocation feature.
+     */
+
+    public static String extractMapData(String jsontxt, String key) {
+       JSONObject jso = (JSONObject) JSONSerializer.toJSON(jsontxt);
+       String a = null;
+       if( jso.getJSONObject("geobytes").containsKey(key)) {
+       a = jso.getJSONObject("geobytes").get(key).toString();
+        }
+       return a ;
+       }
 }

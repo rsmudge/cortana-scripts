@@ -14,7 +14,7 @@ public class Profile {
   private String Version;
   private String OS;
   private String Platform;
-  private String Activex;
+  private String ActiveX;
   private String Flash;
   private String Java;
   private String VBScript;
@@ -38,11 +38,11 @@ public class Profile {
     }
 
     public String getActivex() {
-        return Activex;
+        return ActiveX;
     }
 
     public void setActivex(String Activex) {
-        this.Activex = Activex;
+        this.ActiveX = Activex;
     }
 
     public String getAttack_URL() {

@@ -13,11 +13,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-
-/**
- *
- * @author Administrateur
- */
 public class BeefRequestThread extends Thread {
     private static String beefserverurl;
     private static String details;
@@ -32,7 +27,6 @@ public class BeefRequestThread extends Thread {
      * @param beefUrl
      * @return
      */
-
 
     @Override
     public void run() {
@@ -61,11 +55,7 @@ public class BeefRequestThread extends Thread {
 			conn.disconnect();
 
 		} catch (MalformedURLException e) {
-
-			e.printStackTrace();
 		} catch (IOException e) {
-
-			e.printStackTrace();
 		}
          //this.setHooks(hooks);
     }

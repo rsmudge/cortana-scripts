@@ -38,7 +38,7 @@ if (jsonProfilelist.isEmpty()){
       Profil.setVersion(Profilid.getString("Version"));
       Profil.setOS(Profilid.getString("OS"));
       Profil.setPlatform(Profilid.getString("Platform"));
-      Profil.setActivex(Profilid.getString("Activex"));
+      Profil.setActivex(Profilid.getString("ActiveX"));
       Profil.setFlash(Profilid.getString("Flash"));
       Profil.setJava(Profilid.getString("Java"));
       Profil.setVBScript(Profilid.getString("VBScript"));
@@ -66,13 +66,13 @@ if (jsonProfilelist.isEmpty()){
        Profile ProfilGroup[] = ProfileList.extractProfile(jsontxt);
        String a = null;
 
-        if (value.equals("id")){ a = ProfilGroup[rang].getId(); }
+       if (value.equals("id")){ a = ProfilGroup[rang].getId(); }
        else if(value.equals("Browser")) {a = ProfilGroup[rang].getBrowser();}
        else if(value.equals("UserAgent")) {a = ProfilGroup[rang].getUserAgent();}
        else if(value.equals("Version")) {a = ProfilGroup[rang].getVersion();}
        else if(value.equals("OS")) {a = ProfilGroup[rang].getOS();}
        else if(value.equals("Platform")) {a = ProfilGroup[rang].getPlatform();}
-       else if(value.equals("Activex")) {a = ProfilGroup[rang].getActivex();}
+       else if(value.equals("ActiveX")) {a = ProfilGroup[rang].getActivex();}
        else if(value.equals("Flash")) {a = ProfilGroup[rang].getFlash();}
        else if(value.equals("Java")) {a = ProfilGroup[rang].getJava();}
        else if(value.equals("VBScript")) {a = ProfilGroup[rang].getVBScript();}

@@ -15,7 +15,7 @@ public class OfflineClass {
      *
      * @param jsontxt
      * @return Zombie[]
-     *   - Extract offline zombies from Json representation.
+     *   - Extract offline zombis from Json representation.
      * 
      */
     public static Zombies[] extractOffline(String jsontxt){
@@ -55,7 +55,7 @@ if (Offline.isEmpty()){
      * @param rang
      * @return Zombies
      *
-     * Extract one offline zombie obtained from Json representation.
+     * Extract one offline zombi obtained from Json representation.
      */
     public static Zombies extractOneZombie(String jsontxt , int rang) {
              Zombies zombieGroup[] = OfflineClass.extractOffline(jsontxt);
@@ -72,7 +72,7 @@ catch (ArrayIndexOutOfBoundsException e){return null;}
      * @param value
      * @return String
      *
-     * Extract a particular data about a particular offline zombie obtained from a Json representation.
+     * Extract a particular data about a particular offline zombi obtained from a Json representation.
      */
     public static String extractZombieData(String jsontxt , int rang, String value) {
     
