@@ -1,4 +1,0 @@
-To use this script you need to download freetts.jar
-http://sourceforge.net/projects/freetts/files/
-
-Copy this file into the lib folder and enjoy voice assistance.
