@@ -15,7 +15,7 @@ import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-lang-2.5.jar;
 import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-logging-1.1.3.jar;
 import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-beanutils-1.8.3.jar;
 import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-collections-3.2.1.jar;
-import com.itextpdf.text.* from: C:\BeefLib\dist\lib\itextpdf-5.5.1.jar;
+# import com.itextpdf.text.* from: C:\BeefLib\dist\lib\itextpdf-5.5.1.jar;
 import net.sf.json.* from:  C:\BeefLib\dist\lib\json-lib.jar;
 import net.sf.ezmorph.* from:  C:\BeefLib\dist\lib\ezmorph-1.0.6.jar;
 
