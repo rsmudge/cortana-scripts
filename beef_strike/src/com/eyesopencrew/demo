@@ -1,0 +1,180 @@
+package eyesopensec;
+
+import net.sf.json.JSONObject;
+import net.sf.json.JSONSerializer;
+
+/**
+ *
+ * @author The-BenyGreen
+ */
+public class NewMain {
+   public static String hooks;
+    public static void main(String[] args) {
+        // TODO code application logic here
+        String jsonTxt = "{\"hooked-browsers\":{\"online\":{\"0\":{\"id\":1,\"session\":\"oEXEG6IC41b29JtJ5huJaz\",\"name\":\"S\",\"version\":\"UNKNOWN\",\"os\":\"Linux\",\"platform\":\"Linux i686\",\"ip\":\"192.168.1.110\",\"domain\":\"192.168.1.110\",\"port\":\"4000\",\"page_uri\":\"basic.html\"}},\"offline\":{}}}";
+        System.out.println("Result: " + OnlineClass.extractZombieData(jsonTxt, 0, "ip") + " >> " + OnlineClass.extractZombieData(jsonTxt, 0, "session"));
+
+        String a = "http://192.168.1.23:4000/api/modules?token=86a09ffe2942a64a7670484401524f864e401b9a";
+       String j = BeefRequester.BeefGetRequest(a);
+      int c = CommandList.extractCommands(j).length ;
+      System.out.println(c);
+        System.out.println(CommandList.extractOnecmd(j, 108).getName());
+  }
+}
+
+---------------- Demo report -------------------------------
+package com.eyesopencrew;
+
+public class report {
+
+  public static void main(String[] args) {
+        BeefReport bfr = new BeefReport();
+        bfr.generateReport("c:\\beefpentest.pdf", "Penetration Test: Browser exploitation Report", "@thebenygreen - gacksecurity.blogspot.com", "http://192.168.1.24:3000","7dfecb1eefbe1acab2643079e6b40430b3f3060f", "F:\\ANTIC\\logo.png");
+         }
+}
+
+------------------------ PoSt ----------------------------------------
+package com.eyesopencrew;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class report {
+
+  public static void main(String[] args) {
+        try {
+            /*
+            BeefReport bfr = new BeefReport();
+            bfr.generateReport("c:\\beefpentest.pdf", "Penetration Test: Browser exploitation Report", "@thebenygreen - gacksecurity.blogspot.com", "http://192.168.1.24:3000","7dfecb1eefbe1acab2643079e6b40430b3f3060f", "F:\\ANTIC\\logo.png");
+             */
+            String urlParameters = "param1=a&param2=b&param3=c";
+            String request = "http://192.168.1.24:3000/index.php";
+            URL url = null;
+            try {
+                url = new URL(request);
+            } catch (MalformedURLException ex) {
+                Logger.getLogger(report.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) url.openConnection();
+            } catch (IOException ex) {
+                Logger.getLogger(report.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+            connection.setInstanceFollowRedirects(false);
+            try {
+                connection.setRequestMethod("POST");
+            } catch (ProtocolException ex) {
+                Logger.getLogger(report.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("charset", "utf-8");
+            connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
+            connection.setUseCaches(false);
+            DataOutputStream wr = null;
+            try {
+                wr = new DataOutputStream(connection.getOutputStream());
+            } catch (IOException ex) {
+                Logger.getLogger(report.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            wr.writeBytes(urlParameters);
+            wr.flush();
+            wr.close();
+            connection.disconnect();
+        } catch (IOException ex) {
+            Logger.getLogger(report.class.getName()).log(Level.SEVERE, null, ex);
+        }
+  }
+}
+
+
+
+
+------------ Beef Post -----------------
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+
+package com.eyesopencrew;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BeefPost {
+
+  public static void main(String[] args) {
+        try {
+            /*
+            BeefReport bfr = new BeefReport();
+            bfr.generateReport("c:\\beefpentest.pdf", "Penetration Test: Browser exploitation Report", "@thebenygreen - gacksecurity.blogspot.com", "http://192.168.1.24:3000","7dfecb1eefbe1acab2643079e6b40430b3f3060f", "F:\\ANTIC\\logo.png");
+             *//*
+            String urlParameters = "text=beef";
+            String request = "http://192.168.1.13:3000/api/modules//119?token=07d3d441943b81892cec3f56938c96416f095ce9";
+            URL url = null;
+            try {
+                url = new URL(request);
+            } catch (MalformedURLException ex) {
+                Logger.getLogger(BeefPost.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) url.openConnection();
+            } catch (IOException ex) {
+                Logger.getLogger(BeefPost.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+            connection.setInstanceFollowRedirects(false);
+            try {
+                connection.setRequestMethod("POST");
+            } catch (ProtocolException ex) {
+                Logger.getLogger(BeefPost.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("charset", "utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
+            connection.setUseCaches(false);
+            DataOutputStream wr = null;
+            try {
+                wr = new DataOutputStream(connection.getOutputStream());
+            } catch (IOException ex) {
+                Logger.getLogger(BeefPost.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            wr.writeBytes(urlParameters);
+            wr.flush();
+
+            String line;
+BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+
+while ((line = reader.readLine()) != null) {
+    System.out.println(line);
+}
+wr.close();
+reader.close();
+
+            connection.disconnect();
+        } catch (IOException ex) {
+            Logger.getLogger(BeefPost.class.getName()).log(Level.SEVERE, null, ex);
+        }
+  }
+}
+
+
+ */
