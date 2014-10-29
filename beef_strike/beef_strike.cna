@@ -1,14 +1,14 @@
 ############################ WARNING !!!##################################################
-##																						##
-##		Before beginning to use this script, change all the								##									 															  
-##	"import" lines ... Obviously you must put the right path for each Library.			##
-##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"		##
-##																						##
+##											##
+##		Before beginning to use this script, change all the			##									 															  
+##	"import" lines ... Obviously you must put the right path for each Library.	##
+##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"	##
+##											##
 ##  BeefStrike is a script for Beef and Armitage integration. May be you must read the  ##
-##		README file and watch Youtube video demo before use it  						##
-##																						##	
-##		[	by @TheBenyGreen	]			                    					    ##				 				
-##																						##													 																  
+##		README file and watch Youtube video demo before use it 			##
+##											##	
+##		[	by @TheBenyGreen	] 					##				 				
+##											##													 																  
 ##########################################################################################
 import com.eyesopencrew.* from: C:\BeefLib\dist\BeefLib.jar;
 import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-lang-2.5.jar;
