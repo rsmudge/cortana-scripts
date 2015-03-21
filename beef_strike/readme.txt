@@ -20,6 +20,7 @@ Beef_Strike can help you for automatic and targeted browser's exploitation.
 * geolocate every zombies on a google map
 * have a feature for automatic and targeted client-side exploitation with the ability for the 
   pentester to specify which exploit to use against which specify profile 
+* generate PDF report of BeEF zombies
 
 
 - HOW TO USE -
@@ -29,7 +30,7 @@ For use this script you need to
    BeEF Metasploit Plugin from Christian Frichot github repository.
    https://github.com/xntrik/beefmetasploitplugin
    
-2. Download and install all libraries listed on the read_this file located on the lib folder
+2. Download and install all libraries listed on the read_this file located on the lib folder : http://ow.ly/JMx09  
    And modify the  "import" lines on beef_strike script to point to the right path.
 
 3. To use MiTM attack, Ettercap must be available on system path. [That is the case in Backtrack & Kali].
@@ -38,15 +39,15 @@ For use this script you need to
 
 5. Load beef_strike.cna cortana script. A sub new menu will appear on the attack menu
 
-6. Connect to your Beef server instance and put your RESTful API key.
+6. Connect to your Beef server instance.
 
-6. Begin the zombies recruitment. You can use xss exploitation or ettercap method. In this folder you will find the infect.filter file. 
+7. Begin the zombies recruitment. You can use xss exploitation or ettercap method. In this folder you will find the infect.filter file. 
    This is the default file for html injection. You must change it and point to your beef server. 
    The default value is the localhost address and port 3000 the default port of beef server
    Have fun with ettercap filter: http://www.irongeek.com/i.php?page=security/ettercapfilter
       You can also use the web cloner or mass mailer for recruitment purpose.
 
-7. if you have choose MiTM recruitment method, choose the interface to poison and let beef_strike do the job
+8. if you have choose MiTM recruitment method, choose the interface to poison and let beef_strike do the job. You can also use hooker to play with beef hook inside cobalt strike workflow.
 
 8. Once a zombie appear, many beef's commands (and you can add) are automatically launch again victim. 
    You have profiling the victim browser (you can see result on zombies menu item). 
@@ -54,9 +55,9 @@ For use this script you need to
 
         See ? easy !
 ----------------------------------------------------------------------------------------------------------------+
-Tested on Backtrack5r3
+Tested on Backtrack and Kali
 video demo: http://www.youtube.com/watch?v=YhKhkYzq2s8&feature=share&list=UU7_xeQ_4d8jAMtxdJgikjlA
-- 
+- 			http://youtube.com/mrbenygreen	
 
 - LIMITATION -
   The result of some command can only be see on Beef web ui. 
