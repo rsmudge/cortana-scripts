@@ -59,7 +59,7 @@ on heartbeat_5s {
 
         if ($internal ne ""){
             # if the beacon already isn't in our internal list, add it
-            if ($internal !in @beaconHosts){
+            if ($internal !in %beaconHosts){
                 %beaconHosts[$internal] = %beacon["id"];
             }
         }
