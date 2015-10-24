@@ -2,7 +2,7 @@
 
 popup meterpreter_bottom {
 	menu "Annoy User" {
-		if (host_os(session_host($1)) eq "Microsoft Windows") {
+		if (host_os(session_host($1)) ismatch '.*Windows.*') {
 			item "Enable Keyboard/Mouse" {
 				m_cmd($1, "uictl enable keyboard");
 				m_cmd($1, "uictl enable mouse");
