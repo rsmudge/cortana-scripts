@@ -1,4 +1,5 @@
 # load into hosts_nmap
+# Author: __int128
 # To Do:  Allow user to choose heartbeat & number of decoy hosts
 popup hosts_nmap {
 	item "Continuous_Scan" {

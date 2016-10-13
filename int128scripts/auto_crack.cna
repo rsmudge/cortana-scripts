@@ -7,3 +7,12 @@ on credential_add {
 	cmd($console, "run -j -z");
 	say("New credentials found, autocracking nom nom");
 	}
+
+on loot_add {
+	$console = console();
+        cmd($console, "use auxiliary/analyze/jtr_linux");
+        cmd($console, "set Crypt true");
+        cmd($console, "set Wordlist /opt/metasploit/msf3/data/wordlists/unix_passwords.txt");
+        cmd($console, "run -j -z");
+	say("New Hashes found, autocracking nom nom");
+	}
